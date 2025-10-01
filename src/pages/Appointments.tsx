@@ -346,18 +346,18 @@ const Appointments = () => {
                                   {dayAppointments.map((appointment) => (
                                     <div
                                       key={appointment.id}
-                                      className="bg-primary/10 border border-primary/20 rounded p-1 mb-1 text-xs cursor-pointer hover:bg-primary/20 transition-colors"
+                                      className="bg-primary/10 border border-primary/20 rounded p-1 mb-1 text-xs cursor-pointer hover:bg-primary/20 transition-colors overflow-hidden"
                                     >
-                                      <div className="font-medium text-primary truncate">
+                                      <div className="font-medium text-primary truncate text-[10px]">
                                         {appointment.clientName}
                                       </div>
-                                      <div className="text-muted-foreground truncate">
+                                      <div className="text-muted-foreground truncate text-[9px]">
                                         {appointment.service}
                                       </div>
-                                      <div className="flex justify-center mt-1">
+                                      <div className="flex justify-center mt-0.5">
                                         <Badge 
                                           variant="outline" 
-                                          className={`text-[10px] ${getStatusColor(appointment.status)}`}
+                                          className={`text-[8px] px-1 py-0 h-4 ${getStatusColor(appointment.status)}`}
                                         >
                                           {appointment.status}
                                         </Badge>
