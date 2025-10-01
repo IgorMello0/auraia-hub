@@ -187,9 +187,9 @@ const Appointments = () => {
         {/* Main Calendar View */}
         <div className="lg:col-span-3">
           <Card>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4">
-              <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto">
-                <div className="flex items-center gap-2 shrink-0">
+            <CardHeader className="flex flex-col gap-4 pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -204,37 +204,37 @@ const Appointments = () => {
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
+                  <h2 className="text-sm sm:text-lg font-semibold ml-2">
+                    {viewMode === 'day' 
+                      ? format(selectedDate, "dd 'de' MMM, yyyy", { locale: ptBR })
+                      : viewMode === 'week'
+                      ? `${format(weekDays[0], "dd MMM", { locale: ptBR })} - ${format(weekDays[6], "dd MMM", { locale: ptBR })}`
+                      : format(currentWeek, "MMMM yyyy", { locale: ptBR })
+                    }
+                  </h2>
                 </div>
-                <h2 className="text-sm sm:text-lg font-semibold whitespace-nowrap">
-                  {viewMode === 'day' 
-                    ? format(selectedDate, "dd 'de' MMM, yyyy", { locale: ptBR })
-                    : viewMode === 'week'
-                    ? `${format(weekDays[0], "dd MMM", { locale: ptBR })} - ${format(weekDays[6], "dd MMM", { locale: ptBR })}`
-                    : format(currentWeek, "MMMM yyyy", { locale: ptBR })
-                  }
-                </h2>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 sm:flex-none">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar agendamentos..."
-                    className="pl-8 w-full sm:w-64"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
+                
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1 sm:flex-none">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar agendamentos..."
+                      className="pl-8 w-full sm:w-64"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <Select value={viewMode} onValueChange={(value: 'day' | 'week' | 'month') => setViewMode(value)}>
+                    <SelectTrigger className="w-24 sm:w-32 shrink-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="day">Dia</SelectItem>
+                      <SelectItem value="week">Semana</SelectItem>
+                      <SelectItem value="month">Mês</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Select value={viewMode} onValueChange={(value: 'day' | 'week' | 'month') => setViewMode(value)}>
-                  <SelectTrigger className="w-24 sm:w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="day">Dia</SelectItem>
-                    <SelectItem value="week">Semana</SelectItem>
-                    <SelectItem value="month">Mês</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </CardHeader>
             
