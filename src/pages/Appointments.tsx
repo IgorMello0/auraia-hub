@@ -187,7 +187,7 @@ const Appointments = () => {
         {/* Main Calendar View */}
         <div className="lg:col-span-3">
           <Card>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 pb-4">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4">
               <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto">
                 <div className="flex items-center gap-2 shrink-0">
                   <Button
