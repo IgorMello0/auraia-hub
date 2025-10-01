@@ -354,12 +354,14 @@ const Appointments = () => {
                                       <div className="text-muted-foreground truncate">
                                         {appointment.service}
                                       </div>
-                                      <Badge 
-                                        variant="outline" 
-                                        className={`text-[10px] mt-1 ${getStatusColor(appointment.status)}`}
-                                      >
-                                        {appointment.status}
-                                      </Badge>
+                                      <div className="flex justify-center mt-1">
+                                        <Badge 
+                                          variant="outline" 
+                                          className={`text-[10px] ${getStatusColor(appointment.status)}`}
+                                        >
+                                          {appointment.status}
+                                        </Badge>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
