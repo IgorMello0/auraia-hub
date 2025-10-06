@@ -223,43 +223,65 @@ const ContractSignature = () => {
                     <Button
                       variant={isSignatureMode ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setIsSignatureMode(!isSignatureMode)}
+                      onClick={() => {
+                        setIsSignatureMode(!isSignatureMode);
+                        if (isSignatureMode) {
+                          setSignaturePosition({ x: 0, y: 0 });
+                        }
+                      }}
                     >
-                      {isSignatureMode ? "Cancelar" : "Posicionar Assinatura"}
+                      {isSignatureMode ? "Cancelar Posicionamento" : "Posicionar Assinatura"}
                     </Button>
-                    {isSignatureMode && (
+                    {signaturePosition.x > 0 && signaturePosition.y > 0 && (
                       <Button onClick={handleApplySignature}>
+                        <CheckCircle className="w-4 h-4 mr-1" />
                         Aplicar Assinatura
                       </Button>
                     )}
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="relative h-[600px] border rounded-lg overflow-hidden">
-                    <PDFViewer fileUrl={selectedFileUrl} />
+                  <div 
+                    className="relative h-[600px] border rounded-lg overflow-hidden"
+                    ref={pdfViewerRef}
+                  >
+                    <div className={isSignatureMode ? "pointer-events-none" : ""}>
+                      <PDFViewer fileUrl={selectedFileUrl} />
+                    </div>
                     
                     {isSignatureMode && (
                       <div 
-                        className="absolute inset-0 cursor-crosshair bg-transparent"
+                        className="absolute inset-0 cursor-crosshair z-50"
                         onClick={handleSignaturePosition}
+                        style={{ background: 'rgba(59, 130, 246, 0.05)' }}
+                      />
+                    )}
+                    
+                    {signaturePosition.x > 0 && signaturePosition.y > 0 && (
+                      <div
+                        className="absolute w-40 h-20 bg-blue-500/30 border-2 border-blue-600 rounded flex items-center justify-center z-40 shadow-lg"
+                        style={{
+                          left: signaturePosition.x - 80,
+                          top: signaturePosition.y - 40,
+                          pointerEvents: 'none'
+                        }}
                       >
-                        {signaturePosition.x > 0 && signaturePosition.y > 0 && (
-                          <div
-                            className="absolute w-32 h-16 bg-blue-500/20 border-2 border-blue-500 rounded flex items-center justify-center pointer-events-none"
-                            style={{
-                              left: signaturePosition.x - 64,
-                              top: signaturePosition.y - 32,
-                            }}
-                          >
-                            <span className="text-xs font-medium text-blue-700">Assinatura</span>
-                          </div>
-                        )}
+                        <span className="text-sm font-semibold text-blue-800 bg-white/80 px-2 py-1 rounded">
+                          Assinatura Digital
+                        </span>
                       </div>
                     )}
                   </div>
                   {isSignatureMode && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Clique na posição desejada para colocar a assinatura
+                    <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      Clique na posição desejada no documento para posicionar a assinatura
+                    </p>
+                  )}
+                  {signaturePosition.x > 0 && signaturePosition.y > 0 && !isSignatureMode && (
+                    <p className="text-sm text-green-600 mt-2 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Posição da assinatura definida. Clique em "Aplicar Assinatura" para finalizar.
                     </p>
                   )}
                 </CardContent>
