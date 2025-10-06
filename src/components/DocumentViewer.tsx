@@ -34,14 +34,9 @@ export const DocumentViewer = ({
         <DialogHeader className="px-6 py-4 border-b">
           <div className="flex items-center justify-between">
             <DialogTitle>{fileName}</DialogTitle>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={handleDownload}>
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button variant="ghost" size="icon" onClick={handleDownload}>
+              <Download className="h-4 w-4" />
+            </Button>
           </div>
         </DialogHeader>
 

@@ -245,13 +245,11 @@ const ContractSignature = () => {
                     className="relative h-[600px] border rounded-lg overflow-hidden"
                     ref={pdfViewerRef}
                   >
-                    <div className={isSignatureMode ? "pointer-events-none" : ""}>
-                      <PDFViewer fileUrl={selectedFileUrl} />
-                    </div>
+                    <PDFViewer fileUrl={selectedFileUrl} />
                     
                     {isSignatureMode && (
                       <div 
-                        className="absolute inset-0 cursor-crosshair z-50"
+                        className="absolute inset-0 cursor-crosshair z-50 pointer-events-auto"
                         onClick={handleSignaturePosition}
                         style={{ background: 'rgba(59, 130, 246, 0.05)' }}
                       />
