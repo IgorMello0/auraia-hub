@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Download, User, Clock } from 'lucide-react';
+import { FileText, Download, User, Clock, Eye, FileImage } from 'lucide-react';
 import { EvolutionRecord } from './EvolutionForm';
 import { AnamnesisRecord } from './AnamnesisForm';
+import { DocumentViewer } from './DocumentViewer';
 
 interface RecordViewModalProps {
   record: EvolutionRecord | AnamnesisRecord | null;
@@ -18,7 +19,29 @@ export const RecordViewModal: React.FC<RecordViewModalProps> = ({
   isOpen,
   onClose
 }) => {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<{ url: string; name: string; type: 'pdf' | 'image' } | null>(null);
+  
   if (!record) return null;
+
+  const handleViewDocument = (attachmentName: string) => {
+    // Detectar tipo de arquivo pela extensão
+    const ext = attachmentName.split('.').pop()?.toLowerCase();
+    const isPdf = ext === 'pdf';
+    const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext || '');
+    
+    // URL de exemplo - em produção, isso viria do backend/storage
+    const mockUrl = isPdf 
+      ? 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+      : 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800';
+    
+    setSelectedDocument({
+      url: mockUrl,
+      name: attachmentName,
+      type: isPdf ? 'pdf' : 'image'
+    });
+    setViewerOpen(true);
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
@@ -47,18 +70,42 @@ export const RecordViewModal: React.FC<RecordViewModalProps> = ({
             <CardTitle className="text-lg">Anexos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {evolution.attachments.map((attachment, index) => (
-                <div key={index} className="flex items-center justify-between p-2 border rounded">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    <span className="text-sm">{attachment}</span>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {evolution.attachments.map((attachment, index) => {
+                const ext = attachment.split('.').pop()?.toLowerCase();
+                const isPdf = ext === 'pdf';
+                const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext || '');
+                
+                return (
+                  <div 
+                    key={index} 
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {isPdf ? (
+                        <FileText className="h-5 w-5 text-red-500 shrink-0" />
+                      ) : isImage ? (
+                        <FileImage className="h-5 w-5 text-blue-500 shrink-0" />
+                      ) : (
+                        <FileText className="h-5 w-5 shrink-0" />
+                      )}
+                      <span className="text-sm truncate">{attachment}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleViewDocument(attachment)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <Button variant="ghost" size="sm">
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -168,34 +215,49 @@ export const RecordViewModal: React.FC<RecordViewModalProps> = ({
   );
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-3">
-              {record.type === 'evolution' ? 'Evolução Médica' : 'Anamnese'}
-              <Badge variant={record.type === 'evolution' ? 'default' : 'secondary'}>
-                {record.type === 'evolution' ? 'Evolução' : 'Anamnese'}
-              </Badge>
-            </DialogTitle>
-          </div>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              {formatDate(record.date)}
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-3">
+                {record.type === 'evolution' ? 'Evolução Médica' : 'Anamnese'}
+                <Badge variant={record.type === 'evolution' ? 'default' : 'secondary'}>
+                  {record.type === 'evolution' ? 'Evolução' : 'Anamnese'}
+                </Badge>
+              </DialogTitle>
             </div>
-            <div className="flex items-center gap-1">
-              <User className="h-4 w-4" />
-              {record.professional}
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                {formatDate(record.date)}
+              </div>
+              <div className="flex items-center gap-1">
+                <User className="h-4 w-4" />
+                {record.professional}
+              </div>
             </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
 
-        {record.type === 'evolution' 
-          ? renderEvolutionContent(record as EvolutionRecord)
-          : renderAnamnesisContent(record as AnamnesisRecord)
-        }
-      </DialogContent>
-    </Dialog>
+          {record.type === 'evolution' 
+            ? renderEvolutionContent(record as EvolutionRecord)
+            : renderAnamnesisContent(record as AnamnesisRecord)
+          }
+        </DialogContent>
+      </Dialog>
+
+      {selectedDocument && (
+        <DocumentViewer
+          isOpen={viewerOpen}
+          onClose={() => {
+            setViewerOpen(false);
+            setSelectedDocument(null);
+          }}
+          fileUrl={selectedDocument.url}
+          fileName={selectedDocument.name}
+          fileType={selectedDocument.type}
+        />
+      )}
+    </>
   );
 };

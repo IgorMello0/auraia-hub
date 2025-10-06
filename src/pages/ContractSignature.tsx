@@ -25,6 +25,8 @@ import {
   MousePointer
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { PDFViewer } from '@/components/PDFViewer';
+import { DocumentViewer } from '@/components/DocumentViewer';
 
 interface Contract {
   id: string;
@@ -39,10 +41,13 @@ interface Contract {
 const ContractSignature = () => {
   const { toast } = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFileUrl, setSelectedFileUrl] = useState<string>('');
   const [isSignatureMode, setIsSignatureMode] = useState(false);
   const [signaturePosition, setSignaturePosition] = useState({ x: 0, y: 0 });
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewingContract, setViewingContract] = useState<Contract | null>(null);
   const pdfViewerRef = useRef<HTMLDivElement>(null);
 
   // Mock data for contracts history
@@ -79,6 +84,9 @@ const ContractSignature = () => {
     const file = event.target.files?.[0];
     if (file && file.type === 'application/pdf') {
       setSelectedFile(file);
+      // Criar URL temporária para visualização
+      const url = URL.createObjectURL(file);
+      setSelectedFileUrl(url);
       toast({
         title: "PDF carregado com sucesso",
         description: `Arquivo: ${file.name}`,
@@ -131,6 +139,11 @@ const ContractSignature = () => {
     const matchesStatus = statusFilter === 'all' || contract.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const handleViewContract = (contract: Contract) => {
+    setViewingContract(contract);
+    setViewerOpen(true);
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -204,7 +217,7 @@ const ContractSignature = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MousePointer className="w-5 h-5" />
-                    Posicionamento da Assinatura
+                    Visualização e Assinatura
                   </CardTitle>
                   <div className="flex gap-2">
                     <Button
@@ -222,39 +235,33 @@ const ContractSignature = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div
-                    ref={pdfViewerRef}
-                    className={`relative bg-white border-2 border-dashed border-muted-foreground/20 rounded-lg min-h-[600px] ${
-                      isSignatureMode ? 'cursor-crosshair' : ''
-                    }`}
-                    onClick={handleSignaturePosition}
-                  >
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center">
-                        <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                        <p className="text-lg font-medium">Visualização do PDF</p>
-                        <p className="text-sm text-muted-foreground">
-                          {isSignatureMode 
-                            ? "Clique na posição desejada para colocar a assinatura" 
-                            : "Aqui será exibido o conteúdo do PDF"
-                          }
-                        </p>
-                      </div>
-                    </div>
+                  <div className="relative h-[600px] border rounded-lg overflow-hidden">
+                    <PDFViewer fileUrl={selectedFileUrl} />
                     
-                    {/* Signature Preview */}
-                    {signaturePosition.x > 0 && signaturePosition.y > 0 && (
-                      <div
-                        className="absolute w-32 h-16 bg-blue-100 border-2 border-blue-300 rounded flex items-center justify-center"
-                        style={{
-                          left: signaturePosition.x - 64,
-                          top: signaturePosition.y - 32,
-                        }}
+                    {isSignatureMode && (
+                      <div 
+                        className="absolute inset-0 cursor-crosshair bg-transparent"
+                        onClick={handleSignaturePosition}
                       >
-                        <span className="text-xs text-blue-700">Assinatura</span>
+                        {signaturePosition.x > 0 && signaturePosition.y > 0 && (
+                          <div
+                            className="absolute w-32 h-16 bg-blue-500/20 border-2 border-blue-500 rounded flex items-center justify-center pointer-events-none"
+                            style={{
+                              left: signaturePosition.x - 64,
+                              top: signaturePosition.y - 32,
+                            }}
+                          >
+                            <span className="text-xs font-medium text-blue-700">Assinatura</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
+                  {isSignatureMode && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Clique na posição desejada para colocar a assinatura
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -318,7 +325,11 @@ const ContractSignature = () => {
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewContract(contract)}
+                      >
                         <Eye className="w-4 h-4 mr-1" />
                         Ver
                       </Button>
@@ -355,6 +366,19 @@ const ContractSignature = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {viewingContract && (
+        <DocumentViewer
+          isOpen={viewerOpen}
+          onClose={() => {
+            setViewerOpen(false);
+            setViewingContract(null);
+          }}
+          fileUrl="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+          fileName={viewingContract.documentName}
+          fileType="pdf"
+        />
+      )}
     </div>
   );
 };
