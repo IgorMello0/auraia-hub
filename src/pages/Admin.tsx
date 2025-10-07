@@ -15,8 +15,10 @@ import {
   Database,
   Shield,
   Settings,
-  AlertTriangle
+  AlertTriangle,
+  FileText
 } from 'lucide-react';
+import { FormTemplateBuilder } from '@/components/FormTemplateBuilder';
 
 const Admin = () => {
   // Mock data
@@ -132,6 +134,7 @@ const Admin = () => {
         <TabsList>
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="users">Usuários</TabsTrigger>
+          <TabsTrigger value="templates">Modelos de Fichas</TabsTrigger>
           <TabsTrigger value="system">Sistema</TabsTrigger>
           <TabsTrigger value="security">Segurança</TabsTrigger>
         </TabsList>
@@ -259,6 +262,10 @@ const Admin = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="templates" className="space-y-4">
+          <FormTemplateBuilder />
         </TabsContent>
 
         <TabsContent value="system" className="space-y-4">
