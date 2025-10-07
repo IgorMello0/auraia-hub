@@ -19,8 +19,11 @@ import {
   FileText
 } from 'lucide-react';
 import { FormTemplateBuilder } from '@/components/FormTemplateBuilder';
+import { ProfessionalManagement } from '@/components/ProfessionalManagement';
+import { useState } from 'react';
 
 const Admin = () => {
+  const [activeTab, setActiveTab] = useState('overview');
   // Mock data
   const systemStats = {
     totalUsers: 156,
@@ -130,11 +133,12 @@ const Admin = () => {
         </Card>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="users">Usuários</TabsTrigger>
-          <TabsTrigger value="templates">Modelos de Fichas</TabsTrigger>
+          <TabsTrigger value="professionals">Profissionais</TabsTrigger>
+          <TabsTrigger value="templates">Fichas</TabsTrigger>
           <TabsTrigger value="system">Sistema</TabsTrigger>
           <TabsTrigger value="security">Segurança</TabsTrigger>
         </TabsList>
@@ -253,7 +257,11 @@ const Admin = () => {
                           {professional.status}
                         </Badge>
                       </div>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setActiveTab('professionals')}
+                      >
                         Gerenciar
                       </Button>
                     </div>
@@ -262,6 +270,10 @@ const Admin = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="professionals" className="space-y-4">
+          <ProfessionalManagement />
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-4">
