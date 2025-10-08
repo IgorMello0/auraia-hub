@@ -3,6 +3,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import {
   FileText,
   Sparkles,
@@ -11,6 +21,8 @@ import {
   Droplet,
   Eye,
   CheckCircle2,
+  Plus,
+  Search,
 } from 'lucide-react';
 
 interface FormTemplate {
@@ -95,6 +107,8 @@ const defaultFormTemplates: FormTemplate[] = [
 
 export const FormModelsTab = ({ professionalId }: FormModelsTabProps) => {
   const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   useEffect(() => {
     // Carregar do localStorage ou usar defaults
@@ -128,13 +142,20 @@ export const FormModelsTab = ({ professionalId }: FormModelsTabProps) => {
 
   const assignedCount = formTemplates.filter(f => f.assigned).length;
 
+  // Filtrar fichas com base na busca
+  const filteredTemplates = formTemplates.filter(form =>
+    form.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    form.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    form.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold mb-2">Modelos de Fichas</h3>
           <p className="text-sm text-muted-foreground">
-            Atribua fichas personalizadas ao profissional
+            Gerencie e atribua fichas personalizadas ao profissional
           </p>
         </div>
         <Badge variant="outline" className="text-sm">
@@ -142,8 +163,41 @@ export const FormModelsTab = ({ professionalId }: FormModelsTabProps) => {
         </Badge>
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, tipo ou categoria..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Criar Ficha
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Criar Nova Ficha</DialogTitle>
+              <DialogDescription>
+                Esta funcionalidade será implementada em breve. Use o construtor de fichas na aba "Modelos de Fichas" do painel administrativo.
+              </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {formTemplates.map((form) => {
+        {filteredTemplates.length === 0 ? (
+          <div className="col-span-2 text-center py-8 text-muted-foreground">
+            Nenhuma ficha encontrada com os critérios de busca.
+          </div>
+        ) : (
+          filteredTemplates.map((form) => {
           const Icon = form.icon;
           return (
             <Card
@@ -191,7 +245,8 @@ export const FormModelsTab = ({ professionalId }: FormModelsTabProps) => {
               </CardContent>
             </Card>
           );
-        })}
+        })
+        )}
       </div>
 
       <Card className="bg-muted/50">

@@ -8,9 +8,6 @@ import {
   DollarSign,
   Users,
   BarChart3,
-  FileText,
-  ClipboardList,
-  Sparkles,
 } from 'lucide-react';
 
 interface Module {
@@ -60,27 +57,6 @@ const defaultModules: Module[] = [
     description: 'Acessar relatórios e análises',
     icon: BarChart3,
     enabled: true,
-  },
-  {
-    id: 'anamnesis',
-    name: 'Fichas de Anamnese',
-    description: 'Criar e visualizar fichas de anamnese',
-    icon: ClipboardList,
-    enabled: true,
-  },
-  {
-    id: 'evolution',
-    name: 'Fichas de Evolução',
-    description: 'Registrar evoluções de tratamento',
-    icon: FileText,
-    enabled: true,
-  },
-  {
-    id: 'laser',
-    name: 'Fichas de Laser',
-    description: 'Gerenciar procedimentos a laser',
-    icon: Sparkles,
-    enabled: false,
   },
 ];
 
