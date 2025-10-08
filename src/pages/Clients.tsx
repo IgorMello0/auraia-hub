@@ -23,10 +23,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Plus, Search, Edit, Trash2, Phone, Mail, MapPin, FileText, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { EvolutionForm, EvolutionRecord } from '@/components/EvolutionForm';
-import { AnamnesisForm, AnamnesisRecord } from '@/components/AnamnesisForm';
-import { ClientTimeline } from '@/components/ClientTimeline';
-import { RecordViewModal } from '@/components/RecordViewModal';
+import { useAuth } from '@/contexts/AuthContext';
+import { useForms, FilledForm } from '@/contexts/FormsContext';
+import { FormFillModal } from '@/components/FormFillModal';
+import { FormViewModal } from '@/components/FormViewModal';
 
 interface Client {
   id: number;
@@ -43,12 +43,10 @@ const Clients = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [isEvolutionFormOpen, setIsEvolutionFormOpen] = useState(false);
-  const [isAnamnesisFormOpen, setIsAnamnesisFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showTimeline, setShowTimeline] = useState<number | null>(null);
-  const [clientRecords, setClientRecords] = useState<Record<number, (EvolutionRecord | AnamnesisRecord)[]>>({});
-  const [viewingRecord, setViewingRecord] = useState<EvolutionRecord | AnamnesisRecord | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [viewingFormId, setViewingFormId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -57,6 +55,8 @@ const Clients = () => {
   });
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { professional } = useAuth();
+  const { getAssignedTemplates, addFilledForm, getClientForms, getFormById, templates } = useForms();
 
   // Mock data for clients
   const [clients, setClients] = useState<Client[]>([
@@ -175,30 +175,47 @@ const Clients = () => {
       : 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
-  const handleCreateRecord = (client: Client, type: 'evolution' | 'anamnesis') => {
-    setSelectedClient(client);
-    if (type === 'evolution') {
-      setIsEvolutionFormOpen(true);
-    } else {
-      setIsAnamnesisFormOpen(true);
-    }
-  };
-
-  const handleSaveRecord = (record: EvolutionRecord | AnamnesisRecord) => {
-    const clientId = typeof record.clientId === 'string' ? parseInt(record.clientId) : record.clientId;
-    setClientRecords(prev => ({
-      ...prev,
-      [clientId]: [...(prev[clientId] || []), record]
-    }));
+  const getClientRecordCount = (clientId: number) => {
+    return getClientForms(clientId.toString()).length;
   };
 
   const handleViewTimeline = (clientId: number) => {
     setShowTimeline(showTimeline === clientId ? null : clientId);
   };
 
-  const getClientRecordCount = (clientId: number) => {
-    return clientRecords[clientId]?.length || 0;
+  const handleOpenFormFill = (client: Client, templateId: string) => {
+    setSelectedClient(client);
+    setSelectedTemplateId(templateId);
   };
+
+  const handleSaveFilledForm = (data: Record<string, any>) => {
+    if (!selectedClient || !selectedTemplateId || !professional) return;
+
+    const template = templates.find(t => t.id === selectedTemplateId);
+    if (!template) return;
+
+    const filledForm: FilledForm = {
+      id: Date.now().toString(),
+      templateId: selectedTemplateId,
+      templateName: template.nome,
+      clientId: selectedClient.id.toString(),
+      clientName: selectedClient.name,
+      professionalId: professional.id,
+      professionalName: professional.name,
+      data,
+      criadoEm: new Date().toISOString(),
+    };
+
+    addFilledForm(filledForm);
+    setSelectedTemplateId(null);
+    setSelectedClient(null);
+  };
+
+  const assignedTemplates = professional ? getAssignedTemplates(professional.id) : [];
+  const clientForms = selectedClient ? getClientForms(selectedClient.id.toString()) : [];
+  const selectedTemplate = selectedTemplateId ? templates.find(t => t.id === selectedTemplateId) : null;
+  const viewingForm = viewingFormId ? getFormById(viewingFormId) : null;
+  const viewingTemplate = viewingForm ? templates.find(t => t.id === viewingForm.templateId) : null;
 
   return (
     <div className="w-full space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
@@ -388,26 +405,27 @@ const Clients = () => {
                               <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-44 sm:w-48" align="end">
-                            <div className="space-y-2">
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start text-xs sm:text-sm h-8"
-                                onClick={() => handleCreateRecord(client, 'evolution')}
-                              >
-                                <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
-                                Criar Evolução
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start text-xs sm:text-sm h-8"
-                                onClick={() => handleCreateRecord(client, 'anamnesis')}
-                              >
-                                <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
-                                Criar Anamnese
-                              </Button>
-                            </div>
-                          </PopoverContent>
+                            <PopoverContent className="w-44 sm:w-48" align="end">
+                              <div className="space-y-2">
+                                {assignedTemplates.length === 0 ? (
+                                  <p className="text-xs text-muted-foreground text-center py-2">
+                                    Nenhuma ficha atribuída
+                                  </p>
+                                ) : (
+                                  assignedTemplates.map((template) => (
+                                    <Button
+                                      key={template.id}
+                                      variant="ghost"
+                                      className="w-full justify-start text-xs sm:text-sm h-8"
+                                      onClick={() => handleOpenFormFill(client, template.id)}
+                                    >
+                                      <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
+                                      {template.nome}
+                                    </Button>
+                                  ))
+                                )}
+                              </div>
+                            </PopoverContent>
                         </Popover>
                         <Button
                           variant="ghost"
@@ -549,22 +567,23 @@ const Clients = () => {
                             </PopoverTrigger>
                             <PopoverContent className="w-48" align="end">
                               <div className="space-y-2">
-                                <Button
-                                  variant="ghost"
-                                  className="w-full justify-start h-8 px-2 text-sm"
-                                  onClick={() => handleCreateRecord(client, 'evolution')}
-                                >
-                                  <FileText className="h-3 w-3 mr-2 flex-shrink-0" />
-                                  Criar Evolução
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  className="w-full justify-start h-8 px-2 text-sm"
-                                  onClick={() => handleCreateRecord(client, 'anamnesis')}
-                                >
-                                  <FileText className="h-3 w-3 mr-2 flex-shrink-0" />
-                                  Criar Anamnese
-                                </Button>
+                                {assignedTemplates.length === 0 ? (
+                                  <p className="text-xs text-muted-foreground text-center py-2">
+                                    Nenhuma ficha atribuída
+                                  </p>
+                                ) : (
+                                  assignedTemplates.map((template) => (
+                                    <Button
+                                      key={template.id}
+                                      variant="ghost"
+                                      className="w-full justify-start h-8 px-2 text-sm"
+                                      onClick={() => handleOpenFormFill(client, template.id)}
+                                    >
+                                      <FileText className="h-3 w-3 mr-2 flex-shrink-0" />
+                                      {template.nome}
+                                    </Button>
+                                  ))
+                                )}
                               </div>
                             </PopoverContent>
                           </Popover>
@@ -613,42 +632,67 @@ const Clients = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
-            <ClientTimeline
-              records={clientRecords[showTimeline] || []}
-              onViewRecord={setViewingRecord}
-            />
+            {getClientForms(showTimeline.toString()).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Nenhuma ficha preenchida para este cliente.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {getClientForms(showTimeline.toString()).map((form) => (
+                  <Card key={form.id} className="cursor-pointer hover:bg-accent/50 transition-colors">
+                    <CardContent className="p-4" onClick={() => setViewingFormId(form.id)}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium">{form.templateName}</h4>
+                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
+                            <span>Por: {form.professionalName}</span>
+                            <span>•</span>
+                            <span>{new Date(form.criadoEm).toLocaleString('pt-BR')}</span>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
-      {/* Evolution Form */}
-      {selectedClient && (
-        <EvolutionForm
-          isOpen={isEvolutionFormOpen}
-          onClose={() => setIsEvolutionFormOpen(false)}
+      {/* Form Fill Modal */}
+      {selectedClient && selectedTemplate && (
+        <FormFillModal
+          open={!!selectedTemplateId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedTemplateId(null);
+              setSelectedClient(null);
+            }
+          }}
+          template={selectedTemplate}
           clientId={selectedClient.id.toString()}
           clientName={selectedClient.name}
-          onSave={handleSaveRecord}
+          professionalId={professional?.id || ''}
+          professionalName={professional?.name || ''}
+          onSave={handleSaveFilledForm}
         />
       )}
 
-      {/* Anamnesis Form */}
-      {selectedClient && (
-        <AnamnesisForm
-          isOpen={isAnamnesisFormOpen}
-          onClose={() => setIsAnamnesisFormOpen(false)}
-          clientId={selectedClient.id.toString()}
-          clientName={selectedClient.name}
-          onSave={handleSaveRecord}
+      {/* Form View Modal */}
+      {viewingForm && viewingTemplate && (
+        <FormViewModal
+          open={!!viewingFormId}
+          onOpenChange={(open) => {
+            if (!open) setViewingFormId(null);
+          }}
+          filledForm={viewingForm}
+          template={viewingTemplate}
         />
       )}
-
-      {/* Record View Modal */}
-      <RecordViewModal
-        record={viewingRecord}
-        isOpen={!!viewingRecord}
-        onClose={() => setViewingRecord(null)}
-      />
     </div>
   );
 };

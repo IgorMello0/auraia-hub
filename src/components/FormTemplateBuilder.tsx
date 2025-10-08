@@ -19,27 +19,19 @@ import {
   Heading,
   PenTool,
   Save,
-  Eye
+  Eye,
+  Search,
+  Users
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-export interface FormField {
-  id: string;
-  tipo: 'texto' | 'numero' | 'textarea' | 'select' | 'checkbox' | 'radio' | 'data' | 'titulo' | 'assinatura';
-  label: string;
-  obrigatorio: boolean;
-  opcoes?: string[];
-  placeholder?: string;
-}
-
-export interface FormTemplate {
-  id: string;
-  nome: string;
-  descricao: string;
-  campos: FormField[];
-  criadoEm: string;
-  atualizadoEm: string;
-}
+import { useForms, FormField, FormTemplate } from '@/contexts/FormsContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const fieldTypeIcons = {
   texto: Type,
@@ -66,30 +58,28 @@ const fieldTypeLabels = {
 };
 
 export const FormTemplateBuilder = () => {
-  const [templates, setTemplates] = useState<FormTemplate[]>([]);
+  const { templates, addTemplate, updateTemplate, deleteTemplate: deleteTemplateContext, assignments, assignTemplate } = useForms();
   const [currentTemplate, setCurrentTemplate] = useState<FormTemplate | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedProfessionals, setSelectedProfessionals] = useState<string[]>([]);
 
-  // Load templates from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem('formTemplates');
-    if (stored) {
-      setTemplates(JSON.parse(stored));
-    }
-  }, []);
-
-  // Save templates to localStorage
-  const saveTemplates = (newTemplates: FormTemplate[]) => {
-    localStorage.setItem('formTemplates', JSON.stringify(newTemplates));
-    setTemplates(newTemplates);
-  };
+  // Mock professionals data
+  const mockProfessionals = [
+    { id: '1', name: 'Dr. João Silva', specialization: 'Cardiologista' },
+    { id: '2', name: 'Dra. Maria Santos', specialization: 'Dermatologista' },
+    { id: '3', name: 'Dr. Pedro Costa', specialization: 'Ortopedista' },
+  ];
 
   const createNewTemplate = () => {
     const newTemplate: FormTemplate = {
       id: Date.now().toString(),
       nome: 'Novo Modelo',
       descricao: '',
+      tipo: 'Geral',
       campos: [],
       criadoEm: new Date().toISOString(),
       atualizadoEm: new Date().toISOString()
@@ -168,29 +158,54 @@ export const FormTemplateBuilder = () => {
       atualizadoEm: new Date().toISOString()
     };
 
-    const existingIndex = templates.findIndex(t => t.id === currentTemplate.id);
-    let newTemplates;
-
-    if (existingIndex >= 0) {
-      newTemplates = [...templates];
-      newTemplates[existingIndex] = updatedTemplate;
+    const existingTemplate = templates.find(t => t.id === currentTemplate.id);
+    
+    if (existingTemplate) {
+      updateTemplate(updatedTemplate);
     } else {
-      newTemplates = [...templates, updatedTemplate];
+      addTemplate(updatedTemplate);
     }
 
-    saveTemplates(newTemplates);
     setCurrentTemplate(null);
     setIsEditing(false);
     toast.success('Modelo salvo com sucesso!');
   };
 
-  const deleteTemplate = (templateId: string) => {
+  const handleDeleteTemplate = (templateId: string) => {
     if (confirm('Tem certeza que deseja excluir este modelo?')) {
-      const newTemplates = templates.filter(t => t.id !== templateId);
-      saveTemplates(newTemplates);
+      deleteTemplateContext(templateId);
       toast.success('Modelo excluído com sucesso!');
     }
   };
+
+  const openAssignModal = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    const assignment = assignments.find(a => a.templateId === templateId);
+    setSelectedProfessionals(assignment?.professionalIds || []);
+    setShowAssignModal(true);
+  };
+
+  const handleAssignTemplate = () => {
+    if (selectedTemplateId) {
+      assignTemplate(selectedTemplateId, selectedProfessionals);
+      toast.success('Profissionais atribuídos com sucesso!');
+      setShowAssignModal(false);
+    }
+  };
+
+  const toggleProfessional = (professionalId: string) => {
+    setSelectedProfessionals(prev =>
+      prev.includes(professionalId)
+        ? prev.filter(id => id !== professionalId)
+        : [...prev, professionalId]
+    );
+  };
+
+  const filteredTemplates = templates.filter(template =>
+    template.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    template.descricao.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    template.tipo.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const editTemplate = (template: FormTemplate) => {
     setCurrentTemplate(template);
@@ -240,6 +255,15 @@ export const FormTemplateBuilder = () => {
                     value={currentTemplate.nome}
                     onChange={(e) => setCurrentTemplate({ ...currentTemplate, nome: e.target.value })}
                     placeholder="Ex: Anamnese Odontológica"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="tipo">Tipo de Ficha</Label>
+                  <Input
+                    id="tipo"
+                    value={currentTemplate.tipo}
+                    onChange={(e) => setCurrentTemplate({ ...currentTemplate, tipo: e.target.value })}
+                    placeholder="Ex: Anamnese, Evolução, Laser..."
                   />
                 </div>
                 <div>
@@ -505,7 +529,7 @@ export const FormTemplateBuilder = () => {
   // List view
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold">Modelos de Fichas</h2>
           <p className="text-muted-foreground">
@@ -518,64 +542,144 @@ export const FormTemplateBuilder = () => {
         </Button>
       </div>
 
-      {templates.length === 0 ? (
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nome, tipo ou categoria..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {filteredTemplates.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">Nenhum modelo criado</h3>
+            <h3 className="text-lg font-semibold mb-2">
+              {templates.length === 0 ? 'Nenhum modelo criado' : 'Nenhuma ficha encontrada'}
+            </h3>
             <p className="text-muted-foreground mb-4">
-              Comece criando seu primeiro modelo de formulário personalizado
+              {templates.length === 0
+                ? 'Comece criando seu primeiro modelo de formulário personalizado'
+                : 'Tente buscar com outros termos'
+              }
             </p>
-            <Button onClick={createNewTemplate}>
-              <Plus className="w-4 h-4 mr-2" />
-              Criar Primeiro Modelo
-            </Button>
+            {templates.length === 0 && (
+              <Button onClick={createNewTemplate}>
+                <Plus className="w-4 h-4 mr-2" />
+                Criar Primeiro Modelo
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates.map((template) => (
-            <Card key={template.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  {template.nome}
-                </CardTitle>
-                {template.descricao && (
-                  <CardDescription>{template.descricao}</CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Campos:</span>
-                    <Badge variant="secondary">{template.campos.length}</Badge>
+          {filteredTemplates.map((template) => {
+            const assignment = assignments.find(a => a.templateId === template.id);
+            const assignedCount = assignment?.professionalIds.length || 0;
+            
+            return (
+              <Card key={template.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <FileText className="w-5 h-5" />
+                        {template.nome}
+                      </CardTitle>
+                      <Badge variant="outline" className="mt-2 text-xs">
+                        {template.tipo}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Atualizado em: {new Date(template.atualizadoEm).toLocaleDateString('pt-BR')}
+                  {template.descricao && (
+                    <CardDescription className="line-clamp-2">{template.descricao}</CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Campos:</span>
+                      <Badge variant="secondary">{template.campos.length}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Profissionais:</span>
+                      <Badge variant={assignedCount > 0 ? 'default' : 'outline'}>
+                        {assignedCount}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Atualizado em: {new Date(template.atualizadoEm).toLocaleDateString('pt-BR')}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => editTemplate(template)}
+                      >
+                        Editar
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        size="icon"
+                        onClick={() => openAssignModal(template.id)}
+                        title="Atribuir profissionais"
+                      >
+                        <Users className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => handleDeleteTemplate(template.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      className="flex-1"
-                      onClick={() => editTemplate(template)}
-                    >
-                      Editar
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={() => deleteTemplate(template.id)}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
+
+      {/* Assignment Modal */}
+      <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Atribuir Profissionais</DialogTitle>
+            <DialogDescription>
+              Selecione os profissionais que terão acesso a esta ficha
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {mockProfessionals.map((professional) => (
+              <div key={professional.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-accent/50 transition-colors">
+                <Checkbox
+                  id={`prof-${professional.id}`}
+                  checked={selectedProfessionals.includes(professional.id)}
+                  onCheckedChange={() => toggleProfessional(professional.id)}
+                />
+                <div className="flex-1">
+                  <Label htmlFor={`prof-${professional.id}`} className="font-medium cursor-pointer">
+                    {professional.name}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">{professional.specialization}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowAssignModal(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAssignTemplate}>
+              Salvar Atribuições
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
