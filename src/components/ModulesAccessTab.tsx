@@ -93,7 +93,13 @@ export const ModulesAccessTab = ({ professionalId }: ModulesAccessTabProps) => {
     const stored = localStorage.getItem(storageKey);
     
     if (stored) {
-      setModules(JSON.parse(stored));
+      const storedData = JSON.parse(stored);
+      // Merge stored data with default icons
+      const mergedModules = defaultModules.map(defaultModule => {
+        const storedModule = storedData.find((m: any) => m.id === defaultModule.id);
+        return storedModule ? { ...defaultModule, enabled: storedModule.enabled } : defaultModule;
+      });
+      setModules(mergedModules);
     } else {
       setModules(defaultModules);
     }
@@ -105,9 +111,10 @@ export const ModulesAccessTab = ({ professionalId }: ModulesAccessTabProps) => {
     );
     setModules(updatedModules);
     
-    // Salvar no localStorage
+    // Salvar no localStorage (sem os ícones)
     const storageKey = `modules_professional_${professionalId}`;
-    localStorage.setItem(storageKey, JSON.stringify(updatedModules));
+    const dataToStore = updatedModules.map(({ id, enabled }) => ({ id, enabled }));
+    localStorage.setItem(storageKey, JSON.stringify(dataToStore));
   };
 
   return (

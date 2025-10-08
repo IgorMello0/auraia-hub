@@ -102,7 +102,13 @@ export const ReportsPermissionsTab = ({ professionalId }: ReportsPermissionsTabP
     const stored = localStorage.getItem(storageKey);
     
     if (stored) {
-      setReports(JSON.parse(stored));
+      const storedData = JSON.parse(stored);
+      // Merge stored data with default icons
+      const mergedReports = defaultReports.map(defaultReport => {
+        const storedReport = storedData.find((r: any) => r.id === defaultReport.id);
+        return storedReport ? { ...defaultReport, enabled: storedReport.enabled } : defaultReport;
+      });
+      setReports(mergedReports);
     } else {
       setReports(defaultReports);
     }
@@ -114,9 +120,10 @@ export const ReportsPermissionsTab = ({ professionalId }: ReportsPermissionsTabP
     );
     setReports(updatedReports);
     
-    // Salvar no localStorage
+    // Salvar no localStorage (sem os ícones)
     const storageKey = `reports_professional_${professionalId}`;
-    localStorage.setItem(storageKey, JSON.stringify(updatedReports));
+    const dataToStore = updatedReports.map(({ id, enabled }) => ({ id, enabled }));
+    localStorage.setItem(storageKey, JSON.stringify(dataToStore));
   };
 
   // Agrupar relatórios por categoria

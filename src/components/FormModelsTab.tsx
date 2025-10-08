@@ -102,7 +102,13 @@ export const FormModelsTab = ({ professionalId }: FormModelsTabProps) => {
     const stored = localStorage.getItem(storageKey);
     
     if (stored) {
-      setFormTemplates(JSON.parse(stored));
+      const storedData = JSON.parse(stored);
+      // Merge stored data with default icons
+      const mergedTemplates = defaultFormTemplates.map(defaultTemplate => {
+        const storedTemplate = storedData.find((t: any) => t.id === defaultTemplate.id);
+        return storedTemplate ? { ...defaultTemplate, assigned: storedTemplate.assigned } : defaultTemplate;
+      });
+      setFormTemplates(mergedTemplates);
     } else {
       setFormTemplates(defaultFormTemplates);
     }
@@ -114,9 +120,10 @@ export const FormModelsTab = ({ professionalId }: FormModelsTabProps) => {
     );
     setFormTemplates(updatedForms);
     
-    // Salvar no localStorage
+    // Salvar no localStorage (sem os ícones)
     const storageKey = `form_templates_professional_${professionalId}`;
-    localStorage.setItem(storageKey, JSON.stringify(updatedForms));
+    const dataToStore = updatedForms.map(({ id, assigned }) => ({ id, assigned }));
+    localStorage.setItem(storageKey, JSON.stringify(dataToStore));
   };
 
   const assignedCount = formTemplates.filter(f => f.assigned).length;
