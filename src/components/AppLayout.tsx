@@ -1,4 +1,4 @@
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppSidebar } from '@/components/AppSidebar';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
@@ -8,6 +8,24 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 
 const AppLayout = () => {
   const { professional, isLoading } = useAuth();
+  const location = useLocation();
+
+  const getPageTitle = () => {
+    const path = location.pathname;
+    const routeMap: Record<string, string> = {
+      '/dashboard': 'Dashboard',
+      '/appointments': 'Agenda',
+      '/clients': 'Clientes',
+      '/reports': 'Relatórios',
+      '/payments': 'Pagamentos',
+      '/conversations': 'Conversas',
+      '/settings': 'Configurações',
+      '/admin': 'Administração',
+      '/profile': 'Perfil',
+      '/contracts': 'Contratos'
+    };
+    return routeMap[path] || 'Dashboard';
+  };
 
   if (isLoading) {
     return (
@@ -38,7 +56,7 @@ const AppLayout = () => {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage className="text-sm">Dashboard</BreadcrumbPage>
+                  <BreadcrumbPage className="text-sm">{getPageTitle()}</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>

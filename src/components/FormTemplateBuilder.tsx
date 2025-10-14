@@ -20,8 +20,7 @@ import {
   PenTool,
   Save,
   Eye,
-  Search,
-  Users
+  Search
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForms, FormField, FormTemplate } from '@/contexts/FormsContext';
@@ -58,21 +57,11 @@ const fieldTypeLabels = {
 };
 
 export const FormTemplateBuilder = () => {
-  const { templates, addTemplate, updateTemplate, deleteTemplate: deleteTemplateContext, assignments, assignTemplate } = useForms();
+  const { templates, addTemplate, updateTemplate, deleteTemplate: deleteTemplateContext } = useForms();
   const [currentTemplate, setCurrentTemplate] = useState<FormTemplate | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
-  const [selectedProfessionals, setSelectedProfessionals] = useState<string[]>([]);
-
-  // Mock professionals data
-  const mockProfessionals = [
-    { id: '1', name: 'Dr. João Silva', specialization: 'Cardiologista' },
-    { id: '2', name: 'Dra. Maria Santos', specialization: 'Dermatologista' },
-    { id: '3', name: 'Dr. Pedro Costa', specialization: 'Ortopedista' },
-  ];
 
   const createNewTemplate = () => {
     const newTemplate: FormTemplate = {
@@ -176,29 +165,6 @@ export const FormTemplateBuilder = () => {
       deleteTemplateContext(templateId);
       toast.success('Modelo excluído com sucesso!');
     }
-  };
-
-  const openAssignModal = (templateId: string) => {
-    setSelectedTemplateId(templateId);
-    const assignment = assignments.find(a => a.templateId === templateId);
-    setSelectedProfessionals(assignment?.professionalIds || []);
-    setShowAssignModal(true);
-  };
-
-  const handleAssignTemplate = () => {
-    if (selectedTemplateId) {
-      assignTemplate(selectedTemplateId, selectedProfessionals);
-      toast.success('Profissionais atribuídos com sucesso!');
-      setShowAssignModal(false);
-    }
-  };
-
-  const toggleProfessional = (professionalId: string) => {
-    setSelectedProfessionals(prev =>
-      prev.includes(professionalId)
-        ? prev.filter(id => id !== professionalId)
-        : [...prev, professionalId]
-    );
   };
 
   const filteredTemplates = templates.filter(template =>
@@ -576,9 +542,6 @@ export const FormTemplateBuilder = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredTemplates.map((template) => {
-            const assignment = assignments.find(a => a.templateId === template.id);
-            const assignedCount = assignment?.professionalIds.length || 0;
-            
             return (
               <Card key={template.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
@@ -603,12 +566,6 @@ export const FormTemplateBuilder = () => {
                       <span className="text-muted-foreground">Campos:</span>
                       <Badge variant="secondary">{template.campos.length}</Badge>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Profissionais:</span>
-                      <Badge variant={assignedCount > 0 ? 'default' : 'outline'}>
-                        {assignedCount}
-                      </Badge>
-                    </div>
                     <div className="text-xs text-muted-foreground">
                       Atualizado em: {new Date(template.atualizadoEm).toLocaleDateString('pt-BR')}
                     </div>
@@ -619,14 +576,6 @@ export const FormTemplateBuilder = () => {
                         onClick={() => editTemplate(template)}
                       >
                         Editar
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        size="icon"
-                        onClick={() => openAssignModal(template.id)}
-                        title="Atribuir profissionais"
-                      >
-                        <Users className="w-4 h-4" />
                       </Button>
                       <Button 
                         variant="outline" 
@@ -643,43 +592,6 @@ export const FormTemplateBuilder = () => {
           })}
         </div>
       )}
-
-      {/* Assignment Modal */}
-      <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Atribuir Profissionais</DialogTitle>
-            <DialogDescription>
-              Selecione os profissionais que terão acesso a esta ficha
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {mockProfessionals.map((professional) => (
-              <div key={professional.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-accent/50 transition-colors">
-                <Checkbox
-                  id={`prof-${professional.id}`}
-                  checked={selectedProfessionals.includes(professional.id)}
-                  onCheckedChange={() => toggleProfessional(professional.id)}
-                />
-                <div className="flex-1">
-                  <Label htmlFor={`prof-${professional.id}`} className="font-medium cursor-pointer">
-                    {professional.name}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">{professional.specialization}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowAssignModal(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleAssignTemplate}>
-              Salvar Atribuições
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

@@ -3,16 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import {
   FileText,
   Sparkles,
@@ -21,7 +12,6 @@ import {
   Droplet,
   Eye,
   CheckCircle2,
-  Plus,
   Search,
 } from 'lucide-react';
 
@@ -108,7 +98,6 @@ const defaultFormTemplates: FormTemplate[] = [
 export const FormModelsTab = ({ professionalId }: FormModelsTabProps) => {
   const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   useEffect(() => {
     // Carregar do localStorage ou usar defaults
@@ -163,32 +152,14 @@ export const FormModelsTab = ({ professionalId }: FormModelsTabProps) => {
         </Badge>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome, tipo ou categoria..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Criar Ficha
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Criar Nova Ficha</DialogTitle>
-              <DialogDescription>
-                Esta funcionalidade será implementada em breve. Use o construtor de fichas na aba "Modelos de Fichas" do painel administrativo.
-              </DialogDescription>
-            </DialogHeader>
-          </DialogContent>
-        </Dialog>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nome, tipo ou categoria..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
