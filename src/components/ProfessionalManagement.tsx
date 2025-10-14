@@ -193,7 +193,7 @@ export const ProfessionalManagement = () => {
             </TabsContent>
 
             <TabsContent value="forms" className="mt-6">
-              <FormModelsTab professionalId={selectedProfessional.id} />
+              <FormModelsTab professionalId={selectedProfessional.id.toString()} />
             </TabsContent>
 
             <TabsContent value="reports" className="mt-6">
