@@ -1,292 +1,576 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { DollarSign, Clock, CheckCircle, XCircle, Search, Filter } from 'lucide-react';
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  DollarSign, 
+  Clock, 
+  AlertTriangle, 
+  FileText, 
+  Calendar,
+  Search,
+  Filter,
+  TrendingUp,
+  Users,
+  CreditCard,
+  Plus,
+  Eye,
+  BarChart3
+} from "lucide-react";
 
-// Mock data para pagamentos
-const mockPayments = [
+// Mock de dados de clientes com pacotes (adaptado para clínica de depilação a laser)
+const mockClientPackages = [
   {
-    id: '1',
-    clientName: 'Maria Silva',
-    service: 'Consulta Psicológica',
-    amount: 150,
-    date: '2024-01-20',
-    appointmentDate: '2024-01-20',
-    status: 'paid',
-    paymentMethod: 'Pix'
+    id: "1",
+    clientName: "Ana Silva",
+    service: "Depilação a Laser - Axilas",
+    packageType: "Pacote 10 sessões",
+    status: "active",
+    progress: { completed: 3, total: 10 },
+    nextPayment: { date: "2025-10-20", amount: 180, method: "Pix" },
+    payments: [
+      { id: "p1", date: "2025-01-15", amount: 180, method: "Cartão", status: "paid" },
+      { id: "p2", date: "2025-02-15", amount: 180, method: "Pix", status: "paid" },
+      { id: "p3", date: "2025-03-15", amount: 180, method: "Pix", status: "paid" },
+      { id: "p4", date: "2025-04-15", amount: 180, method: "Pix", status: "pending" },
+    ],
   },
   {
-    id: '2',
-    clientName: 'João Santos',
-    service: 'Terapia de Casal',
-    amount: 200,
-    date: '2024-01-19',
-    appointmentDate: '2024-01-19',
-    status: 'pending',
-    paymentMethod: 'Dinheiro'
+    id: "2",
+    clientName: "Mariana Costa",
+    service: "Depilação a Laser - Perna Completa",
+    packageType: "Plano Mensal",
+    status: "active",
+    progress: { completed: 5, total: 12 },
+    nextPayment: { date: "2025-10-25", amount: 350, method: "Cartão" },
+    payments: [
+      { id: "p5", date: "2025-05-10", amount: 350, method: "Cartão", status: "paid" },
+      { id: "p6", date: "2025-06-10", amount: 350, method: "Cartão", status: "paid" },
+      { id: "p7", date: "2025-07-10", amount: 350, method: "Cartão", status: "paid" },
+      { id: "p8", date: "2025-08-10", amount: 350, method: "Cartão", status: "paid" },
+      { id: "p9", date: "2025-09-10", amount: 350, method: "Cartão", status: "paid" },
+    ],
   },
   {
-    id: '3',
-    clientName: 'Ana Costa',
-    service: 'Consulta Psicológica',
-    amount: 150,
-    date: '2024-01-18',
-    appointmentDate: '2024-01-18',
-    status: 'paid',
-    paymentMethod: 'Cartão'
+    id: "3",
+    clientName: "Juliana Oliveira",
+    service: "Depilação a Laser - Facial Completo",
+    packageType: "Pacote 8 sessões",
+    status: "overdue",
+    progress: { completed: 2, total: 8 },
+    nextPayment: { date: "2025-10-05", amount: 220, method: "Pix" },
+    payments: [
+      { id: "p10", date: "2025-08-05", amount: 220, method: "Pix", status: "paid" },
+      { id: "p11", date: "2025-09-05", amount: 220, method: "Pix", status: "paid" },
+      { id: "p12", date: "2025-10-05", amount: 220, method: "Pix", status: "overdue" },
+    ],
   },
   {
-    id: '4',
-    clientName: 'Carlos Lima',
-    service: 'Terapia Individual',
-    amount: 120,
-    date: '2024-01-17',
-    appointmentDate: '2024-01-17',
-    status: 'overdue',
-    paymentMethod: 'Transferência'
-  }
+    id: "4",
+    clientName: "Fernanda Souza",
+    service: "Depilação a Laser - Virilha + Axilas",
+    packageType: "Pacote 10 sessões",
+    status: "active",
+    progress: { completed: 7, total: 10 },
+    nextPayment: { date: "2025-10-28", amount: 280, method: "Cartão" },
+    payments: [
+      { id: "p13", date: "2025-04-20", amount: 280, method: "Cartão", status: "paid" },
+      { id: "p14", date: "2025-05-20", amount: 280, method: "Cartão", status: "paid" },
+      { id: "p15", date: "2025-06-20", amount: 280, method: "Pix", status: "paid" },
+      { id: "p16", date: "2025-07-20", amount: 280, method: "Pix", status: "paid" },
+      { id: "p17", date: "2025-08-20", amount: 280, method: "Pix", status: "paid" },
+      { id: "p18", date: "2025-09-20", amount: 280, method: "Pix", status: "paid" },
+      { id: "p19", date: "2025-10-20", amount: 280, method: "Cartão", status: "paid" },
+    ],
+  },
+  {
+    id: "5",
+    clientName: "Carla Mendes",
+    service: "Depilação a Laser - Corpo Completo",
+    packageType: "Plano Mensal Premium",
+    status: "active",
+    progress: { completed: 4, total: 12 },
+    nextPayment: { date: "2025-10-30", amount: 650, method: "Cartão" },
+    payments: [
+      { id: "p20", date: "2025-06-30", amount: 650, method: "Cartão", status: "paid" },
+      { id: "p21", date: "2025-07-30", amount: 650, method: "Cartão", status: "paid" },
+      { id: "p22", date: "2025-08-30", amount: 650, method: "Cartão", status: "paid" },
+      { id: "p23", date: "2025-09-30", amount: 650, method: "Cartão", status: "paid" },
+    ],
+  },
 ];
 
 const Payments = () => {
-  const [payments, setPayments] = useState(mockPayments);
-  const [filter, setFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [clients] = useState(mockClientPackages);
+  const [filter, setFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
-
-  const updatePaymentStatus = (paymentId: string, newStatus: 'paid' | 'pending' | 'overdue') => {
-    setPayments(prev => 
-      prev.map(payment => 
-        payment.id === paymentId 
-          ? { ...payment, status: newStatus }
-          : payment
-      )
-    );
-    
-    toast({
-      title: 'Status atualizado',
-      description: `Pagamento marcado como ${newStatus === 'paid' ? 'pago' : newStatus === 'pending' ? 'pendente' : 'em atraso'}.`,
-    });
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'paid':
-        return <Badge className="bg-green-100 text-green-800">Pago</Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800">Pendente</Badge>;
-      case 'overdue':
-        return <Badge className="bg-red-100 text-red-800">Em Atraso</Badge>;
+      case "active":
+        return <Badge className="bg-green-500 hover:bg-green-600">Ativo</Badge>;
+      case "completed":
+        return <Badge className="bg-blue-500 hover:bg-blue-600">Finalizado</Badge>;
+      case "overdue":
+        return <Badge variant="destructive">Em Atraso</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="secondary">Desconhecido</Badge>;
     }
   };
 
-  const filteredPayments = payments.filter(payment => {
-    const matchesFilter = filter === 'all' || payment.status === filter;
-    const matchesSearch = payment.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         payment.service.toLowerCase().includes(searchTerm.toLowerCase());
+  const getPaymentStatusBadge = (status: string) => {
+    switch (status) {
+      case "paid":
+        return <Badge className="bg-green-500 hover:bg-green-600">Pago</Badge>;
+      case "pending":
+        return <Badge className="bg-yellow-500 hover:bg-yellow-600">Pendente</Badge>;
+      case "overdue":
+        return <Badge variant="destructive">Atrasado</Badge>;
+      default:
+        return <Badge variant="secondary">Desconhecido</Badge>;
+    }
+  };
+
+  const filteredClients = clients.filter((client) => {
+    const matchesFilter =
+      filter === "all" ||
+      (filter === "overdue" && client.status === "overdue") ||
+      (filter === "active" && client.status === "active") ||
+      (filter === "monthly" && client.packageType.toLowerCase().includes("mensal")) ||
+      (filter === "package" && client.packageType.toLowerCase().includes("pacote"));
+
+    const matchesSearch =
+      client.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.packageType.toLowerCase().includes(searchTerm.toLowerCase());
+
     return matchesFilter && matchesSearch;
   });
 
-  const stats = {
-    totalRevenue: payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0),
-    pendingAmount: payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0),
-    overdueAmount: payments.filter(p => p.status === 'overdue').reduce((sum, p) => sum + p.amount, 0),
-    totalPayments: payments.length
+  // Calcular estatísticas gerais
+  const allPayments = clients.flatMap((c) => c.payments);
+  const confirmedRevenue = allPayments
+    .filter((p) => p.status === "paid")
+    .reduce((acc, p) => acc + p.amount, 0);
+  const pendingAmount = allPayments
+    .filter((p) => p.status === "pending")
+    .reduce((acc, p) => acc + p.amount, 0);
+  const overdueAmount = allPayments
+    .filter((p) => p.status === "overdue")
+    .reduce((acc, p) => acc + p.amount, 0);
+  const activeContracts = clients.filter((c) => c.status === "active").length;
+
+  // Próximos vencimentos (7 dias)
+  const today = new Date();
+  const nextWeek = new Date(today);
+  nextWeek.setDate(today.getDate() + 7);
+  const upcomingPayments = clients.filter((c) => {
+    const paymentDate = new Date(c.nextPayment.date);
+    return paymentDate >= today && paymentDate <= nextWeek;
+  }).length;
+
+  const handleAddManualPayment = (clientId: string) => {
+    toast({
+      title: "Adicionar Pagamento",
+      description: `Funcionalidade em desenvolvimento para o cliente ${clientId}`,
+    });
+  };
+
+  const handleViewContract = (clientId: string) => {
+    toast({
+      title: "Ver Detalhes",
+      description: `Abrindo detalhes do contrato do cliente ${clientId}`,
+    });
   };
 
   return (
-    <div className="w-full space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
+    <div className="space-y-6">
+      {/* Cabeçalho */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Controle de Pagamentos</h1>
-        <p className="text-sm sm:text-base text-muted-foreground">
-          Gerencie os pagamentos dos seus atendimentos
+        <h1 className="text-3xl font-bold tracking-tight">Gestão Financeira</h1>
+        <p className="text-muted-foreground">
+          Controle de pacotes, planos e pagamentos de clientes
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Receita Total
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ {stats.totalRevenue}</div>
-            <p className="text-xs text-muted-foreground">
-              Pagamentos confirmados
-            </p>
-          </CardContent>
-        </Card>
+      {/* Tabs principais */}
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+          <TabsTrigger value="reports">Relatórios</TabsTrigger>
+        </TabsList>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Pendentes
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ {stats.pendingAmount}</div>
-            <p className="text-xs text-muted-foreground">
-              Aguardando pagamento
-            </p>
-          </CardContent>
-        </Card>
+        {/* Tab: Visão Geral */}
+        <TabsContent value="overview" className="space-y-6">
+          {/* Cards de Resumo Financeiro */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Receita Confirmada</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">R$ {confirmedRevenue.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">Pagamentos recebidos</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Em Atraso
-            </CardTitle>
-            <XCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ {stats.overdueAmount}</div>
-            <p className="text-xs text-muted-foreground">
-              Pagamentos atrasados
-            </p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">R$ {pendingAmount.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">Aguardando pagamento</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total de Pagamentos
-            </CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalPayments}</div>
-            <p className="text-xs text-muted-foreground">
-              Este mês
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Em Atraso</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-destructive">
+                  R$ {overdueAmount.toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground">Requer atenção</p>
+              </CardContent>
+            </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Gerenciar Pagamentos</CardTitle>
-          <CardDescription>
-            Acompanhe e atualize o status dos pagamentos manualmente
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <Label htmlFor="search">Buscar cliente ou serviço</Label>
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Digite o nome do cliente..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-            </div>
-            <div className="min-w-[180px]">
-              <Label>Filtrar por status</Label>
-              <Select value={filter} onValueChange={setFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="paid">Pagos</SelectItem>
-                  <SelectItem value="pending">Pendentes</SelectItem>
-                  <SelectItem value="overdue">Em Atraso</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Contratos Ativos</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{activeContracts}</div>
+                <p className="text-xs text-muted-foreground">Pacotes em andamento</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Próximos Vencimentos</CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{upcomingPayments}</div>
+                <p className="text-xs text-muted-foreground">Nos próximos 7 dias</p>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Payments List */}
-          <div className="space-y-4">
-            {filteredPayments.map((payment) => (
-              <div
-                key={payment.id}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg gap-4"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <h4 className="font-medium">{payment.clientName}</h4>
-                    {getStatusBadge(payment.status)}
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {payment.service}
-                  </p>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-muted-foreground">
-                    <span>Consulta: {new Date(payment.appointmentDate).toLocaleDateString('pt-BR')}</span>
-                    <span>Método: {payment.paymentMethod}</span>
-                  </div>
+          {/* Gerenciamento de Pagamentos */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Gerenciar Pagamentos</CardTitle>
+              <CardDescription>
+                Clientes agrupados por pacotes e planos ativos
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Filtros e Busca */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por cliente, serviço ou tipo de pacote..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
                 </div>
-                
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                  <div className="text-left sm:text-right">
-                    <p className="font-bold text-lg">R$ {payment.amount}</p>
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    {payment.status !== 'paid' && (
-                      <Button
-                        size="sm"
-                        onClick={() => updatePaymentStatus(payment.id, 'paid')}
-                        className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
-                      >
-                        Marcar como Pago
-                      </Button>
-                    )}
-                    
-                    {payment.status === 'paid' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => updatePaymentStatus(payment.id, 'pending')}
-                        className="w-full sm:w-auto"
-                      >
-                        Marcar como Pendente
-                      </Button>
-                    )}
-                    
-                    {payment.status !== 'overdue' && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => updatePaymentStatus(payment.id, 'overdue')}
-                        className="w-full sm:w-auto"
-                      >
-                        Marcar Atraso
-                      </Button>
-                    )}
-                  </div>
+                <div className="flex gap-2">
+                  <Select value={filter} onValueChange={setFilter}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <Filter className="mr-2 h-4 w-4" />
+                      <SelectValue placeholder="Filtrar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="overdue">Em Atraso</SelectItem>
+                      <SelectItem value="active">Pacotes Ativos</SelectItem>
+                      <SelectItem value="monthly">Mensalidades</SelectItem>
+                      <SelectItem value="package">Pacotes</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            ))}
+
+              {/* Lista de Clientes com Accordion */}
+              <div className="space-y-2">
+                {filteredClients.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Users className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                    <p>Nenhum cliente encontrado com os filtros aplicados.</p>
+                  </div>
+                ) : (
+                  <Accordion type="single" collapsible className="w-full">
+                    {filteredClients.map((client) => (
+                      <AccordionItem key={client.id} value={client.id}>
+                        <AccordionTrigger className="hover:no-underline">
+                          <div className="flex items-center justify-between w-full pr-4">
+                            <div className="flex flex-col items-start gap-2 text-left">
+                              <div className="flex items-center gap-3">
+                                <span className="font-semibold">{client.clientName}</span>
+                                {getStatusBadge(client.status)}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {client.service} • {client.packageType}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-6 text-sm">
+                              <div className="text-right">
+                                <p className="font-medium">
+                                  Progresso: {client.progress.completed}/{client.progress.total}
+                                </p>
+                                <Progress
+                                  value={(client.progress.completed / client.progress.total) * 100}
+                                  className="w-24 mt-1"
+                                />
+                              </div>
+                              <div className="text-right">
+                                <p className="text-muted-foreground">Próximo:</p>
+                                <p className="font-medium">{client.nextPayment.date}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+
+                        <AccordionContent>
+                          <div className="pt-4 space-y-4">
+                            {/* Informações do Próximo Pagamento */}
+                            <div className="bg-muted/50 p-4 rounded-lg">
+                              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <CreditCard className="h-4 w-4" />
+                                Próximo Pagamento
+                              </h4>
+                              <div className="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                  <p className="text-muted-foreground">Data</p>
+                                  <p className="font-medium">{client.nextPayment.date}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Valor</p>
+                                  <p className="font-medium text-lg">
+                                    R$ {client.nextPayment.amount.toFixed(2)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Método</p>
+                                  <p className="font-medium">{client.nextPayment.method}</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Histórico de Pagamentos */}
+                            <div>
+                              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                Histórico de Pagamentos
+                              </h4>
+                              <div className="space-y-2">
+                                {client.payments.map((payment) => (
+                                  <div
+                                    key={payment.id}
+                                    className="flex items-center justify-between p-3 border rounded-lg bg-card"
+                                  >
+                                    <div className="flex items-center gap-4">
+                                      <div>
+                                        <p className="font-medium">{payment.date}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                          {payment.method}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                      <p className="font-semibold">
+                                        R$ {payment.amount.toFixed(2)}
+                                      </p>
+                                      {getPaymentStatusBadge(payment.status)}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Ações */}
+                            <div className="flex gap-2 pt-2">
+                              <Button
+                                onClick={() => handleAddManualPayment(client.id)}
+                                className="flex-1"
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Adicionar Pagamento Manual
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={() => handleViewContract(client.id)}
+                                className="flex-1"
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Ver Detalhes do Contrato
+                              </Button>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab: Relatórios */}
+        <TabsContent value="reports" className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* Card: Receita Total */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Receita Total
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold mb-2">
+                  R$ {confirmedRevenue.toFixed(2)}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Total de receitas confirmadas no período
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Card: Ticket Médio */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Ticket Médio
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold mb-2">
+                  R${" "}
+                  {clients.length > 0
+                    ? (confirmedRevenue / clients.length).toFixed(2)
+                    : "0.00"}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Valor médio por cliente ativo
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Card: Taxa de Inadimplência */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  Taxa de Inadimplência
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold mb-2">
+                  {allPayments.length > 0
+                    ? (
+                        (allPayments.filter((p) => p.status === "overdue").length /
+                          allPayments.length) *
+                        100
+                      ).toFixed(1)
+                    : "0.0"}
+                  %
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Porcentagem de pagamentos em atraso
+                </p>
+              </CardContent>
+            </Card>
           </div>
-          
-          {filteredPayments.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">
-                {searchTerm || filter !== 'all' 
-                  ? 'Nenhum pagamento encontrado com os filtros aplicados.' 
-                  : 'Nenhum pagamento registrado ainda.'}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
+          {/* Serviços Mais Vendidos */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Serviços Mais Vendidos</CardTitle>
+              <CardDescription>
+                Ranking dos tratamentos mais contratados
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[
+                  { service: "Depilação a Laser - Perna Completa", count: 12, revenue: 4200 },
+                  { service: "Depilação a Laser - Axilas", count: 18, revenue: 3240 },
+                  { service: "Depilação a Laser - Facial Completo", count: 8, revenue: 1760 },
+                  { service: "Depilação a Laser - Virilha + Axilas", count: 10, revenue: 2800 },
+                  { service: "Depilação a Laser - Corpo Completo", count: 5, revenue: 3250 },
+                ].map((item, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium">{item.service}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Progress
+                          value={(item.count / 20) * 100}
+                          className="flex-1 max-w-[200px]"
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {item.count} contratos
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">R$ {item.revenue.toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">receita total</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Evolução Mensal (Mock) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Evolução da Receita Mensal</CardTitle>
+              <CardDescription>Últimos 6 meses</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[
+                  { month: "Outubro 2025", revenue: 8500 },
+                  { month: "Setembro 2025", revenue: 7200 },
+                  { month: "Agosto 2025", revenue: 6800 },
+                  { month: "Julho 2025", revenue: 7500 },
+                  { month: "Junho 2025", revenue: 6200 },
+                  { month: "Maio 2025", revenue: 5900 },
+                ].map((item, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{item.month}</span>
+                    <div className="flex items-center gap-3">
+                      <Progress value={(item.revenue / 10000) * 100} className="w-40" />
+                      <span className="font-semibold min-w-[100px] text-right">
+                        R$ {item.revenue.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
