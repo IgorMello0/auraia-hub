@@ -137,26 +137,25 @@ const Appointments = () => {
                 mode="single"
                 selected={selectedDate}
                 onSelect={(date) => date && setSelectedDate(date)}
-                className="rounded-md border-0 p-0 mx-auto"
+                className="rounded-md border-0 p-0 w-full"
                 classNames={{
-                  months: "flex flex-col space-y-4 w-full",
-                  month: "space-y-4 w-full flex flex-col items-center",
+                  months: "flex flex-col space-y-2 w-full",
+                  month: "space-y-2 w-full flex flex-col items-center",
                   caption: "flex justify-center pt-1 relative items-center w-full",
-                  caption_label: "text-sm font-medium",
+                  caption_label: "text-sm font-medium truncate",
                   nav: "space-x-1 flex items-center",
                   nav_button: "h-6 w-6 bg-transparent p-0 opacity-50 hover:opacity-100",
                   nav_button_previous: "absolute left-1",
                   nav_button_next: "absolute right-1",
-                  table: "w-full border-collapse space-y-1 mx-auto",
-                  head_row: "flex justify-center w-full",
-                  head_cell: "text-muted-foreground rounded-md w-8 font-normal text-[11px] flex items-center justify-center",
-                  row: "flex w-full mt-2 justify-center",
-                  cell: "h-8 w-8 text-center text-xs p-0 relative focus-within:relative focus-within:z-20 flex items-center justify-center",
-                  day: "h-8 w-8 p-0 font-normal aria-selected:opacity-100 hover:bg-accent rounded-md flex items-center justify-center",
+                  table: "w-full border-collapse mx-auto text-[12px] sm:text-[13px]",
+                  head_row: "flex justify-between w-full",
+                  head_cell: "text-muted-foreground rounded-md flex-1 font-normal text-[10px] sm:text-[11px] flex items-center justify-center",
+                  row: "flex justify-between w-full mt-1",
+                  cell: "aspect-square flex-1 text-center text-xs sm:text-sm p-0 relative flex items-center justify-center",
+                  day: "w-full h-full flex items-center justify-center rounded-md hover:bg-accent aria-selected:bg-primary aria-selected:text-primary-foreground",
                   day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
                   day_today: "bg-accent text-accent-foreground",
                   day_outside: "text-muted-foreground opacity-50",
-                  day_disabled: "text-muted-foreground opacity-50",
                 }}
               />
             </CardContent>
@@ -236,20 +235,21 @@ const Appointments = () => {
               </div>
             </CardHeader>
             
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-hidden">
               {/* Calendar View */}
               <div className="border-t">
                 {viewMode === 'day' && (
                   <div>
                     {/* Day View Header */}
-                    <div className="grid grid-cols-2 border-b bg-muted/50">
-                      <div className="p-3 border-r">
-                        <div className="text-sm font-medium">
-                          {format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-                        </div>
+                    <div className="grid grid-cols-[56px_1fr] md:grid-cols-[80px_1fr] border-b bg-muted/50">
+                      <div className="p-2 md:p-3 text-xs md:text-sm text-muted-foreground border-r bg-muted/20 flex items-center justify-end">
+                        {format(selectedDate, 'EEEE', { locale: ptBR })}
                       </div>
-                      <div className="p-3">
-                        <div className="text-sm text-muted-foreground">
+                      <div className="p-2 md:p-3">
+                        <div className="text-sm md:text-base font-medium">
+                          {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}
+                        </div>
+                        <div className="text-[11px] md:text-xs text-muted-foreground">
                           {filteredAppointments.filter(apt => isSameDay(apt.date, selectedDate)).length} agendamentos
                         </div>
                       </div>
@@ -263,30 +263,30 @@ const Appointments = () => {
                         );
                         
                         return (
-                          <div key={time} className="grid grid-cols-2 border-b min-h-[60px]">
-                            <div className="p-3 text-sm text-muted-foreground border-r bg-muted/20 flex items-start">
+                          <div key={time} className="grid grid-cols-[56px_1fr] md:grid-cols-[80px_1fr] border-b min-h-[48px] md:min-h-[60px]">
+                            <div className="p-2 md:p-3 text-xs md:text-sm text-muted-foreground border-r bg-muted/20 flex items-start justify-end">
                               {time}
                             </div>
-                            <div className="p-2 relative">
+                            <div className="p-2 md:p-3 relative">
                               {dayAppointments.map((appointment) => (
                                 <div
                                   key={appointment.id}
-                                  className="bg-primary/10 border border-primary/20 rounded p-2 mb-2 cursor-pointer hover:bg-primary/20 transition-colors"
+                                  className="bg-primary/10 border border-primary/20 rounded p-2 md:p-3 mb-2 cursor-pointer hover:bg-primary/20 transition-colors"
                                 >
-                                  <div className="font-medium text-primary mb-1">
+                                  <div className="font-medium text-primary mb-1 text-sm md:text-base">
                                     {appointment.clientName}
                                   </div>
-                                  <div className="text-sm text-muted-foreground mb-1">
+                                  <div className="text-xs md:text-sm text-muted-foreground mb-1">
                                     {appointment.service}
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <Badge 
                                       variant="outline" 
-                                      className={`text-xs ${getStatusColor(appointment.status)}`}
+                                      className={`text-[11px] md:text-xs ${getStatusColor(appointment.status)}`}
                                     >
                                       {appointment.status}
                                     </Badge>
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="text-[11px] md:text-xs text-muted-foreground">
                                       {appointment.duration}min
                                     </span>
                                   </div>
@@ -306,68 +306,66 @@ const Appointments = () => {
                 )}
 
                 {viewMode === 'week' && (
-                  <div>
-                    {/* Week Days Header */}
-                    <div className="overflow-x-auto">
-                      <div className="grid grid-cols-8 border-b min-w-[600px]">
-                        <div className="p-2 border-r bg-muted/50"></div>
-                        {weekDays.map((day) => (
-                          <div key={day.toISOString()} className="p-2 text-center border-r bg-muted/50">
-                            <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                              {format(day, 'EEE', { locale: ptBR })}
-                            </div>
-                            <div className={`text-sm font-medium ${
-                              isSameDay(day, new Date()) 
-                                ? 'text-primary font-bold' 
-                                : ''
-                            }`}>
-                              {format(day, 'd')}
-                            </div>
+                  <div className="overflow-x-auto max-h-96 w-full">
+                    {/* Header e corpo compartilham o MESMO contêiner com rolagem */}
+                    <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] md:grid-cols-[80px_repeat(7,minmax(0,1fr))] border-b sticky top-0 z-10 bg-muted/50">
+                      <div className="p-1.5 md:p-2 border-r" />
+                      {weekDays.map((day, idx) => (
+                        <div key={day.toISOString()} className={`p-1.5 md:p-2 text-center border-r ${idx === 6 ? 'border-r-0' : ''}`}>
+                          <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">
+                            {format(day, 'EEE', { locale: ptBR })}
                           </div>
-                        ))}
-                      </div>
+                          <div
+                            className={`text-[11px] md:text-sm font-medium ${
+                              isSameDay(day, new Date()) ? 'text-primary font-bold' : ''
+                            }`}
+                          >
+                            {format(day, 'd')}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
 
-                      {/* Week Time Slots */}
-                      <div className="max-h-96 overflow-y-auto min-w-[600px]">
-                        {timeSlots.slice(8, 20).map((time) => (
-                          <div key={time} className="grid grid-cols-8 border-b min-h-[60px]">
-                            <div className="p-2 text-xs text-muted-foreground border-r bg-muted/20 flex items-start justify-end">
-                              {time}
-                            </div>
-                            {weekDays.map((day) => {
-                              const dayAppointments = filteredAppointments.filter(apt =>
-                                isSameDay(apt.date, day) && apt.time === time
-                              );
-                              
-                              return (
-                                <div key={`${day.toISOString()}-${time}`} className="p-1 border-r relative">
-                                  {dayAppointments.map((appointment) => (
-                                    <div
-                                      key={appointment.id}
-                                      className="bg-primary/10 border border-primary/20 rounded p-1 mb-1 text-xs cursor-pointer hover:bg-primary/20 transition-colors overflow-hidden"
-                                    >
-                                      <div className="font-medium text-primary truncate text-[10px]">
-                                        {appointment.clientName}
-                                      </div>
-                                      <div className="text-muted-foreground truncate text-[9px]">
-                                        {appointment.service}
-                                      </div>
-                                      <div className="flex justify-center mt-0.5">
-                                        <Badge 
-                                          variant="outline" 
-                                          className={`text-[8px] px-1 py-0 h-4 ${getStatusColor(appointment.status)}`}
-                                        >
-                                          {appointment.status}
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              );
-                            })}
+                    {/* Linhas de horários com colunas alinhadas */}
+                    <div>
+                      {timeSlots.slice(8, 20).map((time) => (
+                        <div key={time} className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] md:grid-cols-[80px_repeat(7,minmax(0,1fr))] border-b min-h-[48px] md:min-h-[60px] w-full">
+                          <div className="p-1.5 md:p-2 text-[10px] md:text-xs text-muted-foreground border-r bg-muted/20 flex items-start justify-end">
+                            {time}
                           </div>
-                        ))}
-                      </div>
+                          {weekDays.map((day, idx) => {
+                            const dayAppointments = filteredAppointments.filter(
+                              (apt) => isSameDay(apt.date, day) && apt.time === time
+                            );
+
+                            return (
+                              <div key={`${day.toISOString()}-${time}`} className={`p-1 border-r relative ${idx === 6 ? 'border-r-0' : ''}`}>
+                                {dayAppointments.map((appointment) => (
+                                  <div
+                                    key={appointment.id}
+                                    className="bg-primary/10 border border-primary/20 rounded p-1 mb-1 text-[10px] md:text-xs cursor-pointer hover:bg-primary/20 transition-colors overflow-hidden"
+                                  >
+                                    <div className="font-medium text-primary truncate text-[10px] md:text-[11px]">
+                                      {appointment.clientName}
+                                    </div>
+                                    <div className="text-muted-foreground truncate text-[9px] md:text-[10px]">
+                                      {appointment.service}
+                                    </div>
+                                    <div className="flex justify-center mt-0.5">
+                                      <Badge
+                                        variant="outline"
+                                        className={`text-[8px] md:text-[9px] px-1 py-0 h-4 ${getStatusColor(appointment.status)}`}
+                                      >
+                                        {appointment.status}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
