@@ -296,7 +296,7 @@ const Clients = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
         <Card className="w-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-4">
             <CardTitle className="text-[0.65rem] sm:text-xs md:text-sm font-medium leading-tight">
@@ -374,7 +374,7 @@ const Clients = () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0 sm:p-6">
+        <CardContent className="p-0 overflow-hidden">
           {isMobile ? (
             // Mobile View - Card Layout
             <div className="space-y-3 p-3 sm:p-4">
@@ -480,19 +480,19 @@ const Clients = () => {
             </div>
           ) : (
             // Desktop View - Table Layout
-            <div className="w-full overflow-x-auto -mx-6">
-              <div className="min-w-full inline-block align-middle px-6">
-                <Table className="w-full">
+            <div className="w-full">
+              <div className="w-full">
+                <Table className="w-full table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[150px]">Nome</TableHead>
-                      <TableHead className="min-w-[180px]">Contato</TableHead>
-                      <TableHead className="min-w-[180px] hidden xl:table-cell">Endereço</TableHead>
-                      <TableHead className="min-w-[110px] text-center hidden lg:table-cell">Última Visita</TableHead>
-                      <TableHead className="min-w-[90px] text-center">Status</TableHead>
-                      <TableHead className="min-w-[100px] text-center hidden lg:table-cell">Agendamentos</TableHead>
-                      <TableHead className="min-w-[110px] text-center">Registros</TableHead>
-                      <TableHead className="min-w-[110px] text-center">Ações</TableHead>
+                      <TableHead className="w-[20%]">Nome</TableHead>
+                      <TableHead className="w-[25%]">Contato</TableHead>
+                      <TableHead className="w-[20%] hidden xl:table-cell">Endereço</TableHead>
+                      <TableHead className="w-[15%] text-center hidden lg:table-cell">Última Visita</TableHead>
+                      <TableHead className="w-[10%] text-center">Status</TableHead>
+                      <TableHead className="w-[10%] text-center hidden lg:table-cell">Agendamentos</TableHead>
+                      <TableHead className="w-[15%] text-center">Registros</TableHead>
+                      <TableHead className="w-[15%] text-center">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -505,25 +505,25 @@ const Clients = () => {
                                 {client.name.charAt(0).toUpperCase()}
                               </span>
                             </div>
-                            <span className="truncate max-w-[120px]">{client.name}</span>
+                            <span className="truncate">{client.name}</span>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
                             <div className="flex items-center text-sm">
                               <Mail className="h-3 w-3 mr-1 flex-shrink-0 text-muted-foreground" />
-                              <span className="truncate max-w-[150px]">{client.email}</span>
+                              <span className="truncate">{client.email}</span>
                             </div>
                             <div className="flex items-center text-sm text-muted-foreground">
                               <Phone className="h-3 w-3 mr-1 flex-shrink-0" />
-                              <span className="whitespace-nowrap">{client.phone}</span>
+                              <span className="truncate">{client.phone}</span>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="hidden xl:table-cell">
                           <div className="flex items-center text-sm text-muted-foreground">
                             <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
-                            <span className="truncate max-w-[160px]">{client.address}</span>
+                            <span className="truncate">{client.address}</span>
                           </div>
                         </TableCell>
                         <TableCell className="text-center hidden lg:table-cell">
