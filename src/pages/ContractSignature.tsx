@@ -162,8 +162,10 @@ const ContractSignature = () => {
     <div className="w-full space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Assinatura de Contratos</h1>
-        <p className="text-muted-foreground">Gerencie e assine documentos digitalmente</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Assinatura de Contratos</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
+          Gerencie e assine documentos digitalmente
+        </p>
       </div>
 
       <Tabs defaultValue="new-contract" className="space-y-6">
