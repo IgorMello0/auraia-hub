@@ -17,6 +17,8 @@ import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
 import ContractSignature from "./pages/ContractSignature";
+import Catalogs from "./pages/Catalogs";
+import CatalogDetail from "./pages/CatalogDetail";
 import AppLayout from "./components/AppLayout";
 import NotFound from "./pages/NotFound";
 
@@ -40,6 +42,8 @@ const App = () => (
               <Route path="reports" element={<Reports />} />
               <Route path="payments" element={<Payments />} />
               <Route path="conversations" element={<Conversations />} />
+              <Route path="catalogs" element={<Catalogs />} />
+              <Route path="catalogs/:id" element={<CatalogDetail />} />
               <Route path="settings" element={<Settings />} />
               <Route path="admin" element={<Admin />} />
               <Route path="profile" element={<Profile />} />

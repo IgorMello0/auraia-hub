@@ -19,6 +19,7 @@ const AppLayout = () => {
       '/reports': 'Relatórios',
       '/payments': 'Pagamentos',
       '/conversations': 'Conversas',
+      '/catalogs': 'Catálogos',
       '/settings': 'Configurações',
       '/admin': 'Administração',
       '/profile': 'Perfil',

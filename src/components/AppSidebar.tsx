@@ -1,4 +1,4 @@
-import { Calendar, BarChart3, CreditCard, MessageSquare, Settings, LogOut, User, LayoutDashboard, Shield, FileSignature } from 'lucide-react';
+import { Calendar, BarChart3, CreditCard, MessageSquare, Settings, LogOut, User, LayoutDashboard, Shield, FileSignature, Package } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   Sidebar,
@@ -46,6 +46,11 @@ const menuItems = [
     title: 'Conversas',
     url: '/conversations',
     icon: MessageSquare,
+  },
+  {
+    title: 'Catálogos',
+    url: '/catalogs',
+    icon: Package,
   },
   {
     title: 'Assinatura de Contratos',
