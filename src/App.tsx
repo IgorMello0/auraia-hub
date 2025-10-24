@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -26,35 +27,37 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/" element={<AppLayout />}>
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="appointments" element={<Appointments />} />
-              <Route path="clients" element={<Clients />} />
-              <Route path="reports" element={<Reports />} />
-              <Route path="payments" element={<Payments />} />
-              <Route path="conversations" element={<Conversations />} />
-              <Route path="catalogs" element={<Catalogs />} />
-              <Route path="catalogs/:id" element={<CatalogDetail />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="admin" element={<Admin />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="contracts" element={<ContractSignature />} />
-            </Route>
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/" element={<AppLayout />}>
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="appointments" element={<Appointments />} />
+                <Route path="clients" element={<Clients />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="payments" element={<Payments />} />
+                <Route path="conversations" element={<Conversations />} />
+                <Route path="catalogs" element={<Catalogs />} />
+                <Route path="catalogs/:id" element={<CatalogDetail />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="admin" element={<Admin />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="contracts" element={<ContractSignature />} />
+              </Route>
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

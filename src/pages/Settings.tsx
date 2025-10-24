@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { 
   Settings as SettingsIcon, 
   DollarSign, 
@@ -91,6 +92,7 @@ const Settings = () => {
             Gerencie as configurações do seu sistema
           </p>
         </div>
+        <ThemeToggle />
       </div>
 
       {/* Settings Grid */}

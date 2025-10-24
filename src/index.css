@@ -56,41 +56,53 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Cores do tema dark personalizado - Nova paleta */
+    --background: 0 0% 12%; /* #1E1F22 - Fundo principal */
+    --foreground: 0 0% 89%; /* #E4E4E4 - Texto principal */
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 15%; /* #262728 - Painéis/cards */
+    --card-foreground: 0 0% 89%; /* #E4E4E4 - Texto principal */
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 15%; /* #262728 - Painéis/cards */
+    --popover-foreground: 0 0% 89%; /* #E4E4E4 - Texto principal */
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 180 20% 55%; /* #869D9A - Links/Destaques */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 18%; /* #2E2F32 - Bordas/divisórias */
+    --secondary-foreground: 0 0% 89%; /* #E4E4E4 - Texto principal */
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 18%; /* #2E2F32 - Bordas/divisórias */
+    --muted-foreground: 0 0% 65%; /* #A5A5A5 - Texto secundário */
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 180 20% 55%; /* #869D9A - Links/Destaques */
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 50% 60%; /* #C96A6A - Erro/Aviso */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --border: 0 0% 18%; /* #2E2F32 - Bordas/divisórias */
+    --input: 0 0% 18%; /* #2E2F32 - Bordas/divisórias */
+    --ring: 180 20% 55%; /* #869D9A - Links/Destaques */
+    
+    /* Sidebar dark theme */
+    --sidebar-background: 0 0% 12%; /* #1E1F22 - Fundo principal */
+    --sidebar-foreground: 0 0% 89%; /* #E4E4E4 - Texto principal */
+    --sidebar-primary: 180 20% 55%; /* #869D9A - Links/Destaques */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 0 0% 17%; /* #2B2C2E - Sidebar ativa */
+    --sidebar-accent-foreground: 0 0% 89%; /* #E4E4E4 - Texto principal */
+    --sidebar-border: 0 0% 18%; /* #2E2F32 - Bordas/divisórias */
+    --sidebar-ring: 180 20% 55%; /* #869D9A - Links/Destaques */
+  }
+
+  /* Cores customizadas para hover e estados ativos no tema dark */
+  .dark {
+    --primary-hover: 180 20% 60%; /* #95ACA9 - Hover/Ativo */
+    --accent-hover: 180 20% 60%; /* #95ACA9 - Hover/Ativo */
+    --warning: 45 50% 65%; /* #D5B96A - Alerta/Pendente */
+    --success: 180 20% 45%; /* #6F8C89 - Confirmado */
+    --icon-neutral: 0 0% 76%; /* #C2C2C2 - Ícones neutros */
   }
 }
 
@@ -101,5 +113,61 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Estilos customizados para hover e estados ativos no tema dark */
+@layer components {
+  .dark .hover\:bg-primary:hover {
+    background-color: hsl(var(--primary-hover));
+  }
+  
+  .dark .hover\:text-primary:hover {
+    color: hsl(var(--primary-hover));
+  }
+  
+  .dark .hover\:border-primary:hover {
+    border-color: hsl(var(--primary-hover));
+  }
+  
+  .dark .active\:bg-primary:active {
+    background-color: hsl(var(--primary-hover));
+  }
+  
+  .dark .focus\:ring-primary:focus {
+    --tw-ring-color: hsl(var(--primary-hover));
+  }
+  
+  .dark .bg-primary:hover {
+    background-color: hsl(var(--primary-hover));
+  }
+  
+  .dark .text-primary:hover {
+    color: hsl(var(--primary-hover));
+  }
+  
+  .dark .border-primary:hover {
+    border-color: hsl(var(--primary-hover));
+  }
+  
+  /* Cores de status customizadas */
+  .dark .text-warning {
+    color: hsl(var(--warning));
+  }
+  
+  .dark .bg-warning {
+    background-color: hsl(var(--warning));
+  }
+  
+  .dark .text-success {
+    color: hsl(var(--success));
+  }
+  
+  .dark .bg-success {
+    background-color: hsl(var(--success));
+  }
+  
+  .dark .text-icon-neutral {
+    color: hsl(var(--icon-neutral));
   }
 }
