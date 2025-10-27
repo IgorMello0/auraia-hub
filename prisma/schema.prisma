@@ -1,0 +1,323 @@
+// prisma/schema.prisma
+// Mapeamento completo e compatível com o banco existente no Supabase (AURA CRM)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/* ============================================================
+   ENUMS (iguais aos do banco)
+============================================================ */
+
+enum category_status {
+  ativo
+  inativo
+}
+
+enum catalog_item_status {
+  ativo
+  rascunho
+  inativo
+}
+
+enum appointment_status {
+  agendado
+  confirmado
+  cancelado
+  concluido
+}
+
+enum appointment_log_action {
+  created
+  updated
+  canceled
+  rescheduled
+}
+
+enum user_action_type {
+  admin
+  profissional
+  cliente
+}
+
+enum payment_method {
+  pix
+  cartao
+  dinheiro
+  transferencia
+}
+
+enum payment_status {
+  pago
+  pendente
+  atrasado
+  cancelado
+}
+
+enum ficha_type {
+  anamnese
+  evolucao
+  laser
+  estetica
+}
+
+enum chat_sender {
+  bot
+  cliente
+  profissional
+}
+
+enum theme_type {
+  light
+  dark
+}
+
+enum contract_type_enum {
+  mensal
+  anual
+  personalizado
+}
+
+enum contract_status {
+  ativo
+  expirado
+  cancelado
+}
+
+/* ============================================================
+   TABELAS
+============================================================ */
+
+model professionals {
+  id              Int               @id @default(autoincrement())
+  name            String
+  email           String            @unique
+  password_hash   String
+  phone           String?
+  specialization  String?
+  company_name    String?
+  logo_url        String?
+  contract_type   String?
+  created_at      DateTime?         @db.Timestamp(6)
+  updated_at      DateTime?         @db.Timestamp(6)
+
+  // Relacionamentos
+  clients         clients[]
+  categories      categories[]
+  catalog_items   catalog_items[]
+  appointments    appointments[]
+  payments        payments[]
+  fichas          fichas[]
+  chat_histories  chat_histories[]
+  settings_profile settings_profile?
+  contracts       contracts[]
+  audit_logs      audit_logs[]
+  ficha_templates ficha_templates[]
+
+  @@map("professionals")
+}
+
+model clients {
+  id              Int               @id @default(autoincrement())
+  professional_id Int
+  name            String
+  email           String?
+  phone           String?
+  date_of_birth   DateTime?
+  document        String?
+  notes           String?
+  created_at      DateTime?         @db.Timestamp(6)
+  updated_at      DateTime?         @db.Timestamp(6)
+
+  professional    professionals     @relation(fields: [professional_id], references: [id])
+  appointments    appointments[]
+  payments        payments[]
+  fichas          fichas[]
+  chat_histories  chat_histories[]
+
+  @@map("clients")
+}
+
+model categories {
+  id              Int               @id @default(autoincrement())
+  professional_id Int
+  name            String
+  description     String?
+  status          category_status
+  created_at      DateTime?         @db.Timestamp(6)
+  updated_at      DateTime?         @db.Timestamp(6)
+
+  professional    professionals     @relation(fields: [professional_id], references: [id])
+  catalog_items   catalog_items[]
+
+  @@map("categories")
+}
+
+model catalog_items {
+  id              Int               @id @default(autoincrement())
+  professional_id Int
+  category_id     Int
+  name            String
+  description     String?
+  price           Decimal
+  image_url       String?
+  status          catalog_item_status
+  duration_minutes Int?
+  created_at      DateTime?         @db.Timestamp(6)
+  updated_at      DateTime?         @db.Timestamp(6)
+
+  professional    professionals     @relation(fields: [professional_id], references: [id])
+  category        categories        @relation(fields: [category_id], references: [id])
+  appointments    appointments[]
+
+  @@map("catalog_items")
+}
+
+model appointments {
+  id              Int               @id @default(autoincrement())
+  professional_id Int
+  client_id       Int
+  service_id      Int
+  start_time      DateTime
+  end_time        DateTime
+  status          appointment_status
+  notes           String?
+  created_at      DateTime?         @db.Timestamp(6)
+  updated_at      DateTime?         @db.Timestamp(6)
+
+  professional    professionals     @relation(fields: [professional_id], references: [id])
+  client          clients           @relation(fields: [client_id], references: [id])
+  service         catalog_items     @relation(fields: [service_id], references: [id])
+  appointment_logs appointment_logs[]
+  payments        payments[]
+
+  @@map("appointments")
+}
+
+model appointment_logs {
+  id              Int               @id @default(autoincrement())
+  appointment_id  Int
+  action          appointment_log_action
+  timestamp       DateTime          @db.Timestamp(6)
+  user_action     user_action_type
+
+  appointment     appointments      @relation(fields: [appointment_id], references: [id])
+
+  @@map("appointment_logs")
+}
+
+model payments {
+  id              Int               @id @default(autoincrement())
+  appointment_id  Int?
+  client_id       Int
+  professional_id Int
+  amount          Decimal
+  method          payment_method
+  status          payment_status
+  reference_period String?
+  date            DateTime
+  created_at      DateTime?         @db.Timestamp(6)
+
+  appointment     appointments?     @relation(fields: [appointment_id], references: [id])
+  client          clients           @relation(fields: [client_id], references: [id])
+  professional    professionals     @relation(fields: [professional_id], references: [id])
+
+  @@map("payments")
+}
+
+model ficha_templates {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  category    String?
+  fields      Json
+  created_by  Int?
+  created_at  DateTime? @db.Timestamp(6)
+  updated_at  DateTime? @db.Timestamp(6)
+
+  professional professionals? @relation(fields: [created_by], references: [id])
+  fichas       fichas[]
+
+  @@map("ficha_templates")
+}
+
+model fichas {
+  id              Int               @id @default(autoincrement())
+  client_id       Int
+  professional_id Int
+  type            ficha_type
+  template_id     Int?
+  content         Json
+  created_at      DateTime?         @db.Timestamp(6)
+  updated_at      DateTime?         @db.Timestamp(6)
+
+  client          clients           @relation(fields: [client_id], references: [id])
+  professional    professionals     @relation(fields: [professional_id], references: [id])
+  template        ficha_templates?  @relation(fields: [template_id], references: [id])
+
+  @@map("fichas")
+}
+
+model chat_histories {
+  id              Int               @id @default(autoincrement())
+  client_id       Int
+  professional_id Int
+  session_id      String
+  message         String
+  sender          chat_sender
+  timestamp       DateTime          @db.Timestamp(6)
+
+  client          clients           @relation(fields: [client_id], references: [id])
+  professional    professionals     @relation(fields: [professional_id], references: [id])
+
+  @@map("chat_histories")
+}
+
+model settings_profile {
+  id              Int               @id @default(autoincrement())
+  professional_id Int               @unique
+  theme           theme_type
+  signature_url   String?
+  preferences     Json?
+  language        String
+  created_at      DateTime?         @db.Timestamp(6)
+  updated_at      DateTime?         @db.Timestamp(6)
+
+  professional    professionals     @relation(fields: [professional_id], references: [id])
+
+  @@map("settings_profile")
+}
+
+model audit_logs {
+  id              Int               @id @default(autoincrement())
+  user_id         Int?
+  action          String
+  target_table    String?
+  target_id       Int?
+  timestamp       DateTime          @db.Timestamp(6)
+
+  professional    professionals?    @relation(fields: [user_id], references: [id])
+
+  @@map("audit_logs")
+}
+
+model contracts {
+  id              Int               @id @default(autoincrement())
+  professional_id Int
+  contract_type   contract_type_enum
+  document_url    String?
+  start_date      DateTime
+  end_date        DateTime?
+  status          contract_status
+  created_at      DateTime?         @db.Timestamp(6)
+  updated_at      DateTime?         @db.Timestamp(6)
+
+  professional    professionals     @relation(fields: [professional_id], references: [id])
+
+  @@map("contracts")
+}

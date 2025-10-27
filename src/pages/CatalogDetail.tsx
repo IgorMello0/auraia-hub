@@ -337,3 +337,4 @@ const CatalogDetail = () => {
 };
 
 export default CatalogDetail;
+
