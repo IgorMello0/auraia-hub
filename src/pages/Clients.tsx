@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,23 +20,31 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Search, Edit, Trash2, Phone, Mail, MapPin, FileText, Eye } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Phone, Mail, MapPin, FileText, Eye, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useForms, FilledForm } from '@/contexts/FormsContext';
 import { FormFillModal } from '@/components/FormFillModal';
 import { FormViewModal } from '@/components/FormViewModal';
+import { clientsApi } from '@/lib/api';
 
 interface Client {
   id: number;
   name: string;
-  email: string;
-  phone: string;
-  address: string;
-  lastVisit: string;
-  status: 'ativo' | 'inativo';
-  totalAppointments: number;
+  email: string | null;
+  phone: string | null;
+  dateOfBirth: string | null;
+  document: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  professionalId: number;
+  appointments?: Array<{ id: number }>;
+  status?: 'ativo' | 'inativo';
+  totalAppointments?: number;
+  lastVisit?: string;
+  address?: string;
 }
 
 const Clients = () => {
@@ -57,45 +65,70 @@ const Clients = () => {
   const isMobile = useIsMobile();
   const { professional } = useAuth();
   const { getAssignedTemplates, addFilledForm, getClientForms, getFormById, templates } = useForms();
+  
+  const [clients, setClients] = useState<Client[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchDebounce, setSearchDebounce] = useState('');
 
-  // Mock data for clients
-  const [clients, setClients] = useState<Client[]>([
-    {
-      id: 1,
-      name: 'João Silva',
-      email: 'joao.silva@email.com',
-      phone: '(11) 99999-9999',
-      address: 'Rua das Flores, 123 - São Paulo, SP',
-      lastVisit: '2024-01-15',
-      status: 'ativo',
-      totalAppointments: 5,
-    },
-    {
-      id: 2,
-      name: 'Maria Santos',
-      email: 'maria.santos@email.com',
-      phone: '(11) 88888-8888',
-      address: 'Av. Paulista, 456 - São Paulo, SP',
-      lastVisit: '2024-01-12',
-      status: 'ativo',
-      totalAppointments: 3,
-    },
-    {
-      id: 3,
-      name: 'Pedro Costa',
-      email: 'pedro.costa@email.com',
-      phone: '(11) 77777-7777',
-      address: 'Rua Augusta, 789 - São Paulo, SP',
-      lastVisit: '2023-12-20',
-      status: 'inativo',
-      totalAppointments: 8,
-    },
-  ]);
+  // Carregar clientes do banco
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  // Debounce para busca
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchDebounce);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchDebounce]);
+
+  const loadClients = async () => {
+    setIsLoading(true);
+    try {
+      const response = await clientsApi.getAll({ page: 1, pageSize: 100, search: searchQuery || undefined });
+      if (response.success && response.data) {
+        const clientsData = response.data.map((client: any) => ({
+          ...client,
+          email: client.email || '',
+          phone: client.phone || '',
+          status: 'ativo' as const,
+          totalAppointments: client.appointments?.length || 0,
+          lastVisit: client.appointments && client.appointments.length > 0
+            ? new Date(client.appointments[0].startTime || client.createdAt).toISOString().split('T')[0]
+            : new Date(client.createdAt).toISOString().split('T')[0],
+          address: client.notes || '',
+        }));
+        setClients(clientsData);
+      } else {
+        toast({
+          title: "Erro",
+          description: response.error?.message || "Erro ao carregar clientes",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar clientes",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Recarregar quando searchQuery mudar
+  useEffect(() => {
+    if (!isLoading) {
+      loadClients();
+    }
+  }, [searchQuery]);
 
   const filteredClients = clients.filter(client =>
     client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.phone.includes(searchQuery)
+    (client.email && client.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (client.phone && client.phone.includes(searchQuery))
   );
 
   const handleOpenDialog = (client?: Client) => {
@@ -119,7 +152,7 @@ const Clients = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.email || !formData.phone) {
       toast({
         title: "Erro",
@@ -129,44 +162,91 @@ const Clients = () => {
       return;
     }
 
-    if (editingClient) {
-      // Edit existing client
-      setClients(clients.map(client =>
-        client.id === editingClient.id
-          ? { ...client, ...formData }
-          : client
-      ));
+    if (!professional?.id) {
       toast({
-        title: "Cliente atualizado",
-        description: "As informações do cliente foram atualizadas com sucesso.",
+        title: "Erro",
+        description: "Profissional não identificado.",
+        variant: "destructive",
       });
-    } else {
-      // Add new client
-      const newClient: Client = {
-        id: Math.max(...clients.map(c => c.id)) + 1,
-        ...formData,
-        lastVisit: new Date().toISOString().split('T')[0],
-        status: 'ativo',
-        totalAppointments: 0,
-      };
-      setClients([...clients, newClient]);
-      toast({
-        title: "Cliente cadastrado",
-        description: "Novo cliente foi cadastrado com sucesso.",
-      });
+      return;
     }
 
-    setIsDialogOpen(false);
-    setEditingClient(null);
-    setFormData({ name: '', email: '', phone: '', address: '' });
+    try {
+      const clientData = {
+        professionalId: Number(professional.id),
+        name: formData.name,
+        email: formData.email || null,
+        phone: formData.phone || null,
+        notes: formData.address || null,
+      };
+
+      if (editingClient) {
+        const response = await clientsApi.update(editingClient.id, clientData);
+        if (response.success) {
+          toast({
+            title: "Cliente atualizado",
+            description: "As informações do cliente foram atualizadas com sucesso.",
+          });
+          loadClients();
+        } else {
+          toast({
+            title: "Erro",
+            description: response.error?.message || "Erro ao atualizar cliente",
+            variant: "destructive",
+          });
+        }
+      } else {
+        const response = await clientsApi.create(clientData);
+        if (response.success) {
+          toast({
+            title: "Cliente cadastrado",
+            description: "Novo cliente foi cadastrado com sucesso.",
+          });
+          loadClients();
+        } else {
+          toast({
+            title: "Erro",
+            description: response.error?.message || "Erro ao cadastrar cliente",
+            variant: "destructive",
+          });
+        }
+      }
+
+      setIsDialogOpen(false);
+      setEditingClient(null);
+      setFormData({ name: '', email: '', phone: '', address: '' });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar cliente",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDelete = (clientId: number) => {
-    setClients(clients.filter(client => client.id !== clientId));
-    toast({
-      title: "Cliente removido",
-      description: "Cliente foi removido com sucesso.",
-    });
+  const handleDelete = async (clientId: number) => {
+    try {
+      const response = await clientsApi.delete(clientId);
+      if (response.success) {
+        toast({
+          title: "Cliente removido",
+          description: "Cliente foi removido com sucesso.",
+        });
+        loadClients();
+      } else {
+        toast({
+          title: "Erro",
+          description: response.error?.message || "Erro ao remover cliente",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao remover cliente",
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -366,16 +446,21 @@ const Clients = () => {
             <div className="relative w-full sm:w-64 md:w-72">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar..."
+                placeholder="Buscar por nome, email ou telefone..."
                 className="pl-8 text-sm w-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchDebounce}
+                onChange={(e) => setSearchDebounce(e.target.value)}
               />
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0 overflow-hidden">
-          {isMobile ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">Carregando clientes...</span>
+            </div>
+          ) : isMobile ? (
             // Mobile View - Card Layout
             <div className="space-y-3 p-3 sm:p-4">
               {filteredClients.map((client) => (
@@ -439,18 +524,22 @@ const Clients = () => {
                     </div>
                     
                     <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Mail className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">{client.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Phone className="h-3 w-3 flex-shrink-0" />
-                        <span className="break-all">{client.phone}</span>
-                      </div>
-                      {client.address && (
+                      {client.email && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Mail className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{client.email}</span>
+                        </div>
+                      )}
+                      {client.phone && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Phone className="h-3 w-3 flex-shrink-0" />
+                          <span className="break-all">{client.phone}</span>
+                        </div>
+                      )}
+                      {client.notes && (
                         <div className="flex items-start gap-2 text-muted-foreground">
                           <MapPin className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                          <span className="break-words line-clamp-2">{client.address}</span>
+                          <span className="break-words line-clamp-2">{client.notes}</span>
                         </div>
                       )}
                     </div>
@@ -510,25 +599,31 @@ const Clients = () => {
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
-                            <div className="flex items-center text-sm">
-                              <Mail className="h-3 w-3 mr-1 flex-shrink-0 text-muted-foreground" />
-                              <span className="truncate">{client.email}</span>
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Phone className="h-3 w-3 mr-1 flex-shrink-0" />
-                              <span className="truncate">{client.phone}</span>
-                            </div>
+                            {client.email && (
+                              <div className="flex items-center text-sm">
+                                <Mail className="h-3 w-3 mr-1 flex-shrink-0 text-muted-foreground" />
+                                <span className="truncate">{client.email}</span>
+                              </div>
+                            )}
+                            {client.phone && (
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Phone className="h-3 w-3 mr-1 flex-shrink-0" />
+                                <span className="truncate">{client.phone}</span>
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="hidden xl:table-cell">
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
-                            <span className="truncate">{client.address}</span>
-                          </div>
+                          {client.notes && (
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
+                              <span className="truncate">{client.notes}</span>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-center hidden lg:table-cell">
                           <span className="text-sm text-muted-foreground whitespace-nowrap">
-                            {new Date(client.lastVisit).toLocaleDateString('pt-BR')}
+                            {client.lastVisit ? new Date(client.lastVisit).toLocaleDateString('pt-BR') : '-'}
                           </span>
                         </TableCell>
                         <TableCell className="text-center">

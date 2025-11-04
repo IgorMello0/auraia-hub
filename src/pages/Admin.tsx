@@ -28,13 +28,16 @@ import {
 } from 'lucide-react';
 import { FormTemplateBuilder } from '@/components/FormTemplateBuilder';
 import { ProfessionalManagement } from '@/components/ProfessionalManagement';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { professionalsApi, categoriesApi } from '@/lib/api';
+import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Category {
   id: string;
@@ -47,40 +50,38 @@ interface Category {
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [categories, setCategories] = useState<Category[]>([
-    {
-      id: '1',
-      name: 'Depilação a Laser',
-      description: 'Serviços de depilação a laser para diferentes partes do corpo',
-      status: 'ativo',
-      itemsCount: 8,
-      createdAt: '2024-01-15'
-    },
-    {
-      id: '2',
-      name: 'Estética Facial',
-      description: 'Tratamentos faciais e cuidados com a pele',
-      status: 'ativo',
-      itemsCount: 12,
-      createdAt: '2024-01-20'
-    },
-    {
-      id: '3',
-      name: 'Massoterapia',
-      description: 'Diferentes tipos de massagens terapêuticas',
-      status: 'ativo',
-      itemsCount: 6,
-      createdAt: '2024-02-01'
-    },
-    {
-      id: '4',
-      name: 'Tratamentos Corporais',
-      description: 'Procedimentos para cuidados com o corpo',
-      status: 'inativo',
-      itemsCount: 0,
-      createdAt: '2024-02-10'
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    setIsLoadingCategories(true);
+    try {
+      const response = await categoriesApi.getAll({ page: 1, pageSize: 100 });
+      if (response.success && response.data) {
+        const categoriesData = response.data.map((cat: any) => ({
+          id: cat.id.toString(),
+          name: cat.name,
+          description: cat.description || '',
+          status: cat.status === 'ativo' ? 'ativo' as const : 'inativo' as const,
+          itemsCount: cat.catalogItems?.length || 0,
+          createdAt: new Date(cat.createdAt).toISOString().split('T')[0],
+        }));
+        setCategories(categoriesData);
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar categorias",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingCategories(false);
     }
-  ]);
+  };
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
@@ -93,6 +94,7 @@ const Admin = () => {
   });
 
   const { toast } = useToast();
+  const { professional } = useAuth();
 
   // Mock data
   const systemStats = {
@@ -111,11 +113,37 @@ const Admin = () => {
     { id: 4, user: 'Ana Silva', action: 'Fez login', time: '15 min atrás', type: 'login' },
   ];
 
-  const professionals = [
-    { id: 1, name: 'Dr. João Silva', specialization: 'Cardiologia', status: 'ativo', appointments: 45 },
-    { id: 2, name: 'Dra. Maria Santos', specialization: 'Dermatologia', status: 'ativo', appointments: 38 },
-    { id: 3, name: 'Dr. Pedro Costa', specialization: 'Ortopedia', status: 'inativo', appointments: 0 },
-  ];
+  const [professionals, setProfessionals] = useState<Array<{ id: number; name: string; specialization: string | null; status: string; appointments: number }>>([]);
+  const [isLoadingProfessionals, setIsLoadingProfessionals] = useState(true);
+
+  useEffect(() => {
+    loadProfessionals();
+  }, []);
+
+  const loadProfessionals = async () => {
+    setIsLoadingProfessionals(true);
+    try {
+      const response = await professionalsApi.getAll({ page: 1, pageSize: 100 });
+      if (response.success && response.data) {
+        const professionalsData = response.data.map((prof: any) => ({
+          id: prof.id,
+          name: prof.name,
+          specialization: prof.specialization || 'Sem especialização',
+          status: 'ativo',
+          appointments: prof.appointments?.length || 0,
+        }));
+        setProfessionals(professionalsData);
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar profissionais",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingProfessionals(false);
+    }
+  };
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -134,7 +162,7 @@ const Admin = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleCreateCategory = () => {
+  const handleCreateCategory = async () => {
     if (!categoryForm.name.trim()) {
       toast({
         title: "Erro",
@@ -144,22 +172,45 @@ const Admin = () => {
       return;
     }
 
-    const newCategory: Category = {
-      id: Date.now().toString(),
-      name: categoryForm.name,
-      description: categoryForm.description,
-      status: categoryForm.status,
-      itemsCount: 0,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
+    if (!professional?.id) {
+      toast({
+        title: "Erro",
+        description: "Profissional não identificado",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    setCategories([...categories, newCategory]);
-    setCategoryForm({ name: '', description: '', status: 'ativo' });
-    setIsCategoryModalOpen(false);
-    toast({
-      title: "Sucesso",
-      description: "Categoria criada com sucesso"
-    });
+    try {
+      const response = await categoriesApi.create({
+        professionalId: Number(professional.id),
+        name: categoryForm.name,
+        description: categoryForm.description || undefined,
+        status: categoryForm.status,
+      });
+
+      if (response.success) {
+        toast({
+          title: "Sucesso",
+          description: "Categoria criada com sucesso"
+        });
+        loadCategories();
+        setCategoryForm({ name: '', description: '', status: 'ativo' });
+        setIsCategoryModalOpen(false);
+      } else {
+        toast({
+          title: "Erro",
+          description: response.error?.message || "Erro ao criar categoria",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao criar categoria",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleEditCategory = (category: Category) => {
@@ -172,7 +223,7 @@ const Admin = () => {
     setIsCategoryModalOpen(true);
   };
 
-  const handleUpdateCategory = () => {
+  const handleUpdateCategory = async () => {
     if (!categoryForm.name.trim()) {
       toast({
         title: "Erro",
@@ -182,39 +233,96 @@ const Admin = () => {
       return;
     }
 
-    setCategories(categories.map(cat => 
-      cat.id === editingCategory?.id 
-        ? { ...cat, name: categoryForm.name, description: categoryForm.description, status: categoryForm.status }
-        : cat
-    ));
+    if (!editingCategory) return;
+
+    try {
+      const response = await categoriesApi.update(Number(editingCategory.id), {
+        name: categoryForm.name,
+        description: categoryForm.description || undefined,
+        status: categoryForm.status,
+      });
+
+      if (response.success) {
+        toast({
+          title: "Sucesso",
+          description: "Categoria atualizada com sucesso"
+        });
+        loadCategories();
+        setEditingCategory(null);
+        setCategoryForm({ name: '', description: '', status: 'ativo' });
+        setIsCategoryModalOpen(false);
+      } else {
+        toast({
+          title: "Erro",
+          description: response.error?.message || "Erro ao atualizar categoria",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar categoria",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+      const response = await categoriesApi.delete(Number(categoryId));
+      if (response.success) {
+        toast({
+          title: "Sucesso",
+          description: "Categoria excluída com sucesso"
+        });
+        loadCategories();
+      } else {
+        toast({
+          title: "Erro",
+          description: response.error?.message || "Erro ao excluir categoria",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir categoria",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleToggleCategoryStatus = async (categoryId: string) => {
+    const category = categories.find(cat => cat.id === categoryId);
+    if (!category) return;
+
+    const newStatus = category.status === 'ativo' ? 'inativo' : 'ativo';
     
-    setEditingCategory(null);
-    setCategoryForm({ name: '', description: '', status: 'ativo' });
-    setIsCategoryModalOpen(false);
-    toast({
-      title: "Sucesso",
-      description: "Categoria atualizada com sucesso"
-    });
-  };
+    try {
+      const response = await categoriesApi.update(Number(categoryId), {
+        status: newStatus,
+      });
 
-  const handleDeleteCategory = (categoryId: string) => {
-    setCategories(categories.filter(cat => cat.id !== categoryId));
-    toast({
-      title: "Sucesso",
-      description: "Categoria excluída com sucesso"
-    });
-  };
-
-  const handleToggleCategoryStatus = (categoryId: string) => {
-    setCategories(categories.map(cat => 
-      cat.id === categoryId 
-        ? { ...cat, status: cat.status === 'ativo' ? 'inativo' : 'ativo' }
-        : cat
-    ));
-    toast({
-      title: "Sucesso",
-      description: "Status da categoria alterado"
-    });
+      if (response.success) {
+        toast({
+          title: "Sucesso",
+          description: "Status da categoria alterado"
+        });
+        loadCategories();
+      } else {
+        toast({
+          title: "Erro",
+          description: response.error?.message || "Erro ao alterar status",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao alterar status",
+        variant: "destructive"
+      });
+    }
   };
 
   const resetCategoryForm = () => {
@@ -346,39 +454,48 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {professionals.map((professional) => (
-                  <div key={professional.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                        <Users className="h-5 w-5 text-primary" />
+              {isLoadingProfessionals ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">Carregando profissionais...</span>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {professionals.map((professional) => {
+                    return (
+                      <div key={professional.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                            <Users className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <div className="font-medium">{professional.name}</div>
+                            <div className="text-sm text-muted-foreground">{professional.specialization}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <div className="text-sm font-medium">{professional.appointments} agendamentos</div>
+                            <Badge
+                              variant={professional.status === 'ativo' ? 'default' : 'secondary'}
+                              className="text-xs"
+                            >
+                              {professional.status}
+                            </Badge>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setActiveTab('professionals')}
+                          >
+                            Gerenciar
+                          </Button>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-medium">{professional.name}</div>
-                        <div className="text-sm text-muted-foreground">{professional.specialization}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="text-sm font-medium">{professional.appointments} agendamentos</div>
-                        <Badge 
-                          variant={professional.status === 'ativo' ? 'default' : 'secondary'}
-                          className="text-xs"
-                        >
-                          {professional.status}
-                        </Badge>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setActiveTab('professionals')}
-                      >
-                        Gerenciar
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -399,7 +516,6 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Filters and Search */}
               <div className="flex flex-col sm:flex-row gap-4 mb-6">
                 <div className="flex-1">
                   <div className="relative">
@@ -469,7 +585,7 @@ const Admin = () => {
                         <Label htmlFor="status">Status</Label>
                         <Select 
                           value={categoryForm.status} 
-                          onValueChange={(value: 'ativo' | 'inativo') => setCategoryForm({...categoryForm, status: value})}
+                          onValueChange={(value) => setCategoryForm({...categoryForm, status: value as 'ativo' | 'inativo'})}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -496,9 +612,14 @@ const Admin = () => {
                 </Dialog>
               </div>
 
-              {/* Categories List */}
+              
               <div className="space-y-4">
-                {filteredCategories.length === 0 ? (
+                {isLoadingCategories ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">Carregando categorias...</span>
+                  </div>
+                ) : filteredCategories.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Tag className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>Nenhuma categoria encontrada</p>

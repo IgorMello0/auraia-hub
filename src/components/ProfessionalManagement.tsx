@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,82 +21,88 @@ import {
   Save,
   CheckCircle,
   Tag,
+  Loader2,
 } from 'lucide-react';
 import { ModulesAccessTab } from './ModulesAccessTab';
 import { FormModelsTab } from './FormModelsTab';
 import { ReportsPermissionsTab } from './ReportsPermissionsTab';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
-
-// Mock data dos profissionais
-const mockProfessionals = [
-  {
-    id: 1,
-    name: 'Dr. João Silva',
-    specialty: 'Cardiologia',
-    email: 'joao.silva@clinic.com',
-    phone: '(11) 98765-4321',
-    status: 'ativo',
-    appointments: 45,
-    assignedCategories: ['1', '2'], // IDs das categorias atribuídas
-  },
-  {
-    id: 2,
-    name: 'Dra. Maria Santos',
-    specialty: 'Dermatologia',
-    email: 'maria.santos@clinic.com',
-    phone: '(11) 97654-3210',
-    status: 'ativo',
-    appointments: 38,
-    assignedCategories: ['1', '2', '3'],
-  },
-  {
-    id: 3,
-    name: 'Dr. Pedro Costa',
-    specialty: 'Ortopedia',
-    email: 'pedro.costa@clinic.com',
-    phone: '(11) 96543-2109',
-    status: 'inativo',
-    appointments: 0,
-    assignedCategories: ['3'],
-  },
-];
-
-// Mock data das categorias
-const mockCategories = [
-  {
-    id: '1',
-    name: 'Depilação a Laser',
-    description: 'Serviços de depilação a laser para diferentes partes do corpo',
-    status: 'ativo',
-  },
-  {
-    id: '2',
-    name: 'Estética Facial',
-    description: 'Tratamentos faciais e cuidados com a pele',
-    status: 'ativo',
-  },
-  {
-    id: '3',
-    name: 'Massoterapia',
-    description: 'Diferentes tipos de massagens terapêuticas',
-    status: 'ativo',
-  },
-  {
-    id: '4',
-    name: 'Tratamentos Corporais',
-    description: 'Procedimentos para cuidados com o corpo',
-    status: 'inativo',
-  },
-];
+import { professionalsApi, categoriesApi } from '@/lib/api';
 
 export const ProfessionalManagement = () => {
   const { toast } = useToast();
-  const [professionals, setProfessionals] = useState(mockProfessionals);
-  const [selectedProfessional, setSelectedProfessional] = useState(mockProfessionals[0]);
+  const [professionals, setProfessionals] = useState<Array<{
+    id: number;
+    name: string;
+    specialty: string;
+    email: string;
+    phone: string | null;
+    status: string;
+    appointments: number;
+    assignedCategories?: string[];
+  }>>([]);
+  const [selectedProfessional, setSelectedProfessional] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [assignedCategories, setAssignedCategories] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [categories, setCategories] = useState<Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    status: string;
+  }>>([]);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [profResponse, catResponse] = await Promise.all([
+        professionalsApi.getAll({ page: 1, pageSize: 100 }),
+        categoriesApi.getAll({ page: 1, pageSize: 100 }),
+      ]);
+
+      if (profResponse.success && profResponse.data) {
+        const professionalsData = profResponse.data.map((prof: any) => ({
+          id: prof.id,
+          name: prof.name,
+          specialty: prof.specialization || 'Sem especialização',
+          email: prof.email,
+          phone: prof.phone,
+          status: 'ativo',
+          appointments: prof.appointments?.length || 0,
+          assignedCategories: prof.categories?.map((c: any) => c.id.toString()) || [],
+        }));
+        setProfessionals(professionalsData);
+        if (professionalsData.length > 0 && !selectedProfessional) {
+          setSelectedProfessional(professionalsData[0]);
+          setAssignedCategories(professionalsData[0].assignedCategories || []);
+        }
+      }
+
+      if (catResponse.success && catResponse.data) {
+        const categoriesData = catResponse.data.map((cat: any) => ({
+          id: cat.id.toString(),
+          name: cat.name,
+          description: cat.description,
+          status: cat.status,
+        }));
+        setCategories(categoriesData);
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar dados",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredProfessionals = professionals.filter((prof) => {
     const matchesSearch = prof.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -180,12 +186,18 @@ export const ProfessionalManagement = () => {
       </Card>
 
       {/* Professional Selection */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {filteredProfessionals.map((prof) => (
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-sm text-muted-foreground">Carregando profissionais...</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {filteredProfessionals.map((prof) => (
           <Card
             key={prof.id}
             className={`cursor-pointer transition-all hover:shadow-md ${
-              selectedProfessional.id === prof.id ? 'ring-2 ring-primary' : ''
+              selectedProfessional?.id === prof.id ? 'ring-2 ring-primary' : ''
             }`}
             onClick={() => handleProfessionalSelect(prof)}
           >
@@ -216,25 +228,27 @@ export const ProfessionalManagement = () => {
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Professional Details and Configuration */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl">{selectedProfessional.name}</CardTitle>
-              <CardDescription>{selectedProfessional.specialty}</CardDescription>
+      {selectedProfessional && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl">{selectedProfessional.name}</CardTitle>
+                <CardDescription>{selectedProfessional.specialty}</CardDescription>
+              </div>
+              {selectedProfessional.status === 'ativo' && (
+                <Badge variant="default" className="flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Ativo
+                </Badge>
+              )}
             </div>
-            {selectedProfessional.status === 'ativo' && (
-              <Badge variant="default" className="flex items-center gap-1">
-                <CheckCircle className="h-3 w-3" />
-                Ativo
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
+          </CardHeader>
         <CardContent>
           <Tabs defaultValue="modules" className="w-full">
             <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
@@ -266,7 +280,7 @@ export const ProfessionalManagement = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {mockCategories
+                  {categories
                     .filter(category => category.status === 'ativo')
                     .map((category) => (
                       <div
@@ -303,7 +317,7 @@ export const ProfessionalManagement = () => {
                     <h4 className="font-medium mb-2">Categorias Selecionadas:</h4>
                     <div className="flex flex-wrap gap-2">
                       {assignedCategories.map((categoryId) => {
-                        const category = mockCategories.find(cat => cat.id === categoryId);
+                        const category = categories.find(cat => cat.id === categoryId);
                         return (
                           <Badge key={categoryId} variant="secondary" className="flex items-center gap-1">
                             <Tag className="h-3 w-3" />
@@ -319,6 +333,7 @@ export const ProfessionalManagement = () => {
           </Tabs>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 };

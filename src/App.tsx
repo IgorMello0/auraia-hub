@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -15,7 +16,7 @@ import Reports from "./pages/Reports";
 import Payments from "./pages/Payments";
 import Conversations from "./pages/Conversations";
 import Settings from "./pages/Settings";
-import Admin from "./pages/Admin";
+const Admin = lazy(() => import("./pages/Admin"));
 import Profile from "./pages/Profile";
 import ContractSignature from "./pages/ContractSignature";
 import Catalogs from "./pages/Catalogs";
@@ -47,7 +48,14 @@ const App = () => (
                 <Route path="catalogs" element={<Catalogs />} />
                 <Route path="catalogs/:id" element={<CatalogDetail />} />
                 <Route path="settings" element={<Settings />} />
-                <Route path="admin" element={<Admin />} />
+                <Route
+                  path="admin"
+                  element={
+                    <Suspense fallback={<div />}> 
+                      <Admin />
+                    </Suspense>
+                  }
+                />
                 <Route path="profile" element={<Profile />} />
                 <Route path="contracts" element={<ContractSignature />} />
               </Route>
