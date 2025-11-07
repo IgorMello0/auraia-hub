@@ -2,8 +2,52 @@ import { Router } from 'express'
 import { prisma } from '../prisma'
 import { auth } from '../middleware/auth'
 import { createErrorResponse, createSuccessResponse, parsePagination } from '../utils/response'
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
 
 export const router = Router()
+
+// Login de profissional
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body as { email: string; password: string }
+    
+    if (!email || !password) {
+      return res.status(400).json(createErrorResponse('Email e senha são obrigatórios', 400))
+    }
+    
+    console.log('[Login] Tentativa de login:', email)
+    
+    const professional = await prisma.professional.findUnique({ where: { email } })
+    if (!professional) {
+      console.log('[Login] Profissional não encontrado:', email)
+      return res.status(401).json(createErrorResponse('Credenciais inválidas', 401))
+    }
+    
+    const ok = await bcrypt.compare(password, professional.passwordHash)
+    if (!ok) {
+      console.log('[Login] Senha incorreta para:', email)
+      return res.status(401).json(createErrorResponse('Credenciais inválidas', 401))
+    }
+    
+    const token = jwt.sign({ id: professional.id, type: 'profissional' }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '12h' })
+    console.log('[Login] Login bem-sucedido:', email)
+    
+    res.json(createSuccessResponse({ 
+      token, 
+      professional: { 
+        id: professional.id.toString(), 
+        name: professional.name, 
+        email: professional.email, 
+        phone: professional.phone || '', 
+        specialization: professional.specialization || '' 
+      } 
+    }))
+  } catch (error) {
+    console.error('[Login] Erro:', error)
+    res.status(500).json(createErrorResponse('Erro interno do servidor', 500))
+  }
+})
 
 // Listar profissionais
 router.get('/', auth(false), async (req, res) => {
@@ -55,13 +99,49 @@ router.get('/:id', auth(false), async (req, res) => {
   res.json(createSuccessResponse(item))
 })
 
-// Criar
-router.post('/', auth(), async (req, res) => {
-  const { name, email, passwordHash, phone, specialization, companyName, logoUrl, contractType } = req.body
-  const created = await prisma.professional.create({
-    data: { name, email, passwordHash, phone, specialization, companyName, logoUrl, contractType }
-  })
-  res.status(201).json(createSuccessResponse(created))
+// Criar (signup)
+router.post('/', async (req, res) => {
+  try {
+    const { name, email, password, phone, specialization, companyName, logoUrl, contractType } = req.body
+    
+    if (!name || !email || !password) {
+      return res.status(400).json(createErrorResponse('Nome, email e senha são obrigatórios', 400))
+    }
+    
+    if (password.length < 6) {
+      return res.status(400).json(createErrorResponse('A senha deve ter pelo menos 6 caracteres', 400))
+    }
+    
+    console.log('[Signup] Tentativa de cadastro:', email)
+    
+    const existing = await prisma.professional.findUnique({ where: { email } })
+    if (existing) {
+      console.log('[Signup] Email já cadastrado:', email)
+      return res.status(400).json(createErrorResponse('Email já cadastrado', 400))
+    }
+    
+    const passwordHash = await bcrypt.hash(password, 10)
+    const created = await prisma.professional.create({
+      data: { name, email, passwordHash, phone, specialization, companyName, logoUrl, contractType }
+    })
+    
+    const token = jwt.sign({ id: created.id, type: 'profissional' }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '12h' })
+    console.log('[Signup] Cadastro bem-sucedido:', email)
+    
+    res.status(201).json(createSuccessResponse({ 
+      token, 
+      professional: { 
+        id: created.id.toString(), 
+        name: created.name, 
+        email: created.email, 
+        phone: created.phone || '', 
+        specialization: created.specialization || '' 
+      } 
+    }))
+  } catch (error) {
+    console.error('[Signup] Erro:', error)
+    res.status(500).json(createErrorResponse('Erro interno do servidor', 500))
+  }
 })
 
 // Atualizar

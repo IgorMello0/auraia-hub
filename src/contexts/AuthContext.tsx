@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { professionalsApi } from '@/lib/api';
 
 interface Professional {
   id: string;
@@ -10,9 +11,9 @@ interface Professional {
 
 interface AuthContextType {
   professional: Professional | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  signup: (data: Omit<Professional, 'id'> & { password: string }) => Promise<boolean>;
+  signup: (data: Omit<Professional, 'id'> & { password: string }) => Promise<{ success: boolean; error?: string }>;
   isLoading: boolean;
 }
 
@@ -23,62 +24,136 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simular verificação de sessão armazenada
+    // Verificar sessão armazenada
     const savedProfessional = localStorage.getItem('professional');
-    if (savedProfessional) {
-      setProfessional(JSON.parse(savedProfessional));
+    const savedToken = localStorage.getItem('token');
+    
+    if (savedProfessional && savedToken) {
+      try {
+        setProfessional(JSON.parse(savedProfessional));
+      } catch (error) {
+        // Se houver erro ao parsear, limpar dados inválidos
+        localStorage.removeItem('professional');
+        localStorage.removeItem('token');
+      }
     }
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     
-    // Mock login - removar quando integrar backend
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (email === 'demo@demo.com' && password === 'demo') {
-      const mockProfessional: Professional = {
-        id: '1',
-        name: 'Dr. João Silva',
-        email: 'demo@demo.com',
-        phone: '+55 11 99999-9999',
-        specialization: 'Psicologia'
-      };
+    try {
+      console.log('[Auth] Attempting login for:', email);
+      const response = await professionalsApi.login(email, password);
+      console.log('[Auth] Login response:', response);
       
-      setProfessional(mockProfessional);
-      localStorage.setItem('professional', JSON.stringify(mockProfessional));
+      if (response.success && response.data) {
+        const { token, professional: profData } = response.data;
+        
+        if (!profData || !token) {
+          console.error('[Auth] Missing data in response:', response);
+          setIsLoading(false);
+          return { 
+            success: false, 
+            error: 'Resposta inválida do servidor. Tente novamente.' 
+          };
+        }
+        
+        const professionalData: Professional = {
+          id: profData.id.toString(),
+          name: profData.name,
+          email: profData.email,
+          phone: profData.phone || '',
+          specialization: profData.specialization || ''
+        };
+        
+        setProfessional(professionalData);
+        localStorage.setItem('professional', JSON.stringify(professionalData));
+        localStorage.setItem('token', token);
+        setIsLoading(false);
+        console.log('[Auth] Login successful');
+        return { success: true };
+      }
+      
+      console.error('[Auth] Login failed:', response.error);
       setIsLoading(false);
-      return true;
+      return { 
+        success: false, 
+        error: response.error?.message || 'Erro ao fazer login. Verifique suas credenciais.' 
+      };
+    } catch (error) {
+      console.error('[Auth] Login exception:', error);
+      setIsLoading(false);
+      return { 
+        success: false, 
+        error: 'Erro de conexão. Verifique se o servidor está rodando e tente novamente.' 
+      };
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
-  const signup = async (data: Omit<Professional, 'id'> & { password: string }): Promise<boolean> => {
+  const signup = async (data: Omit<Professional, 'id'> & { password: string }): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     
-    // Mock signup
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newProfessional: Professional = {
-      id: Date.now().toString(),
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      specialization: data.specialization
-    };
-    
-    setProfessional(newProfessional);
-    localStorage.setItem('professional', JSON.stringify(newProfessional));
-    setIsLoading(false);
-    return true;
+    try {
+      console.log('[Auth] Attempting signup for:', data.email);
+      const response = await professionalsApi.signup({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        phone: data.phone,
+        specialization: data.specialization
+      });
+      console.log('[Auth] Signup response:', response);
+      
+      if (response.success && response.data) {
+        const { token, professional: profData } = response.data;
+        
+        if (!profData || !token) {
+          console.error('[Auth] Missing data in response:', response);
+          setIsLoading(false);
+          return { 
+            success: false, 
+            error: 'Resposta inválida do servidor. Tente novamente.' 
+          };
+        }
+        
+        const professionalData: Professional = {
+          id: profData.id.toString(),
+          name: profData.name,
+          email: profData.email,
+          phone: profData.phone || '',
+          specialization: profData.specialization || ''
+        };
+        
+        setProfessional(professionalData);
+        localStorage.setItem('professional', JSON.stringify(professionalData));
+        localStorage.setItem('token', token);
+        setIsLoading(false);
+        console.log('[Auth] Signup successful');
+        return { success: true };
+      }
+      
+      console.error('[Auth] Signup failed:', response.error);
+      setIsLoading(false);
+      return { 
+        success: false, 
+        error: response.error?.message || 'Erro ao criar conta. Tente novamente mais tarde.' 
+      };
+    } catch (error) {
+      console.error('[Auth] Signup exception:', error);
+      setIsLoading(false);
+      return { 
+        success: false, 
+        error: 'Erro de conexão. Verifique se o servidor está rodando e tente novamente.' 
+      };
+    }
   };
 
   const logout = () => {
     setProfessional(null);
     localStorage.removeItem('professional');
+    localStorage.removeItem('token');
   };
 
   return (

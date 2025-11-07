@@ -18,9 +18,18 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const success = await login(email, password);
+    if (!email || !password) {
+      toast({
+        title: 'Erro de validação',
+        description: 'Por favor, preencha todos os campos.',
+        variant: 'destructive',
+      });
+      return;
+    }
     
-    if (success) {
+    const result = await login(email, password);
+    
+    if (result.success) {
       toast({
         title: 'Login realizado com sucesso!',
         description: 'Bem-vindo ao seu painel profissional.',
@@ -29,7 +38,7 @@ const Login = () => {
     } else {
       toast({
         title: 'Erro no login',
-        description: 'Email ou senha incorretos.',
+        description: result.error || 'Email ou senha incorretos. Verifique suas credenciais e tente novamente.',
         variant: 'destructive',
       });
     }
@@ -81,12 +90,6 @@ const Login = () => {
             <Link to="/signup" className="text-primary hover:underline">
               Criar conta
             </Link>
-          </div>
-
-          <div className="mt-4 p-3 bg-muted rounded-lg text-sm">
-            <p className="font-medium">Demo:</p>
-            <p>Email: demo@demo.com</p>
-            <p>Senha: demo</p>
           </div>
         </CardContent>
       </Card>

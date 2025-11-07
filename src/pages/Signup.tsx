@@ -32,6 +32,24 @@ const Signup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.name || !formData.email || !formData.phone || !formData.specialization || !formData.password) {
+      toast({
+        title: 'Erro de validação',
+        description: 'Por favor, preencha todos os campos obrigatórios.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (formData.password.length < 6) {
+      toast({
+        title: 'Erro de validação',
+        description: 'A senha deve ter pelo menos 6 caracteres.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: 'Erro de validação',
@@ -41,7 +59,7 @@ const Signup = () => {
       return;
     }
     
-    const success = await signup({
+    const result = await signup({
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
@@ -49,7 +67,7 @@ const Signup = () => {
       password: formData.password
     });
     
-    if (success) {
+    if (result.success) {
       toast({
         title: 'Conta criada com sucesso!',
         description: 'Bem-vindo ao seu painel profissional.',
@@ -58,7 +76,7 @@ const Signup = () => {
     } else {
       toast({
         title: 'Erro ao criar conta',
-        description: 'Tente novamente mais tarde.',
+        description: result.error || 'Não foi possível criar sua conta. Verifique se o email já não está cadastrado e tente novamente.',
         variant: 'destructive',
       });
     }

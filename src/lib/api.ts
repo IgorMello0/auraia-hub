@@ -28,26 +28,41 @@ async function apiRequest<T>(
   }
 
   try {
+    console.log('[API] Request:', { url, method: options.method || 'GET', body: options.body })
+    
     const response = await fetch(url, {
       ...options,
       headers,
     })
 
-    const data = await response.json()
+    console.log('[API] Response:', { status: response.status, statusText: response.statusText, url })
+
+    let data
+    const contentType = response.headers.get('content-type')
+    
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json()
+    } else {
+      const text = await response.text()
+      data = text ? { message: text } : { message: 'Erro na requisição' }
+    }
+    
+    console.log('[API] Response data:', data)
     
     if (!response.ok) {
       return {
         success: false,
-        error: data.error || { message: 'Erro na requisição', code: response.status },
+        error: data.error || { message: data.message || 'Erro na requisição', code: response.status },
       }
     }
 
     return data
   } catch (error) {
+    console.error('[API] Error:', error)
     return {
       success: false,
       error: {
-        message: error instanceof Error ? error.message : 'Erro de conexão',
+        message: error instanceof Error ? error.message : 'Erro de conexão. Verifique se o servidor está rodando.',
         code: 0,
       },
     }
@@ -72,6 +87,10 @@ export const clientsApi = {
 
 // Profissionais
 export const professionalsApi = {
+  login: async (email: string, password: string) => 
+    apiRequest<{ token: string; professional: any }>('/profissionais/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  signup: async (data: { name: string; email: string; password: string; phone?: string; specialization?: string }) => 
+    apiRequest<{ token: string; professional: any }>('/profissionais', { method: 'POST', body: JSON.stringify(data) }),
   getAll: async (params?: { page?: number; pageSize?: number; search?: string }) => {
     const query = new URLSearchParams()
     if (params?.page) query.append('page', params.page.toString())
