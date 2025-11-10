@@ -6,58 +6,111 @@ import { createErrorResponse, createSuccessResponse, parsePagination } from '../
 export const router = Router()
 
 router.get('/', auth(false), async (req, res) => {
-  const { skip, take, page, pageSize } = parsePagination(req.query)
-  const [items, total] = await Promise.all([
-    prisma.client.findMany({
-      skip,
-      take,
-      orderBy: { id: 'desc' },
-      include: {
-        professional: true,
-        appointments: true,
-        payments: true,
-        fichas: true,
-        chatHistories: true,
-        conversas: true
-      }
-    }),
-    prisma.client.count()
-  ])
-  res.json(createSuccessResponse(items, { page, pageSize, total }))
+  try {
+    const { skip, take, page, pageSize } = parsePagination(req.query)
+    const [items, total] = await Promise.all([
+      prisma.client.findMany({
+        skip,
+        take,
+        orderBy: { id: 'desc' },
+        include: {
+          professional: true,
+          appointments: {
+            select: {
+              id: true,
+              startTime: true,
+              endTime: true,
+              status: true
+            }
+          }
+          // Removido payments, fichas, chatHistories e conversas temporariamente
+          // até as migrações serem executadas
+        }
+      }),
+      prisma.client.count()
+    ])
+    res.json(createSuccessResponse(items, { page, pageSize, total }))
+  } catch (error: any) {
+    console.error('[Clients] Erro ao buscar clientes:', error)
+    res.status(500).json(createErrorResponse(error.message || 'Erro ao buscar clientes', 500))
+  }
 })
 
 router.get('/:id', auth(false), async (req, res) => {
-  const id = Number(req.params.id)
-  const item = await prisma.client.findUnique({
-    where: { id },
-    include: { professional: true, appointments: true, payments: true, fichas: true, chatHistories: true, conversas: true }
-  })
-  if (!item) return res.status(404).json(createErrorResponse('Cliente não encontrado', 404))
-  res.json(createSuccessResponse(item))
+  try {
+    const id = Number(req.params.id)
+    const item = await prisma.client.findUnique({
+      where: { id },
+      include: {
+        professional: true,
+        appointments: {
+          select: {
+            id: true,
+            startTime: true,
+            endTime: true,
+            status: true
+          }
+        }
+        // Removido payments, fichas, chatHistories e conversas temporariamente
+      }
+    })
+    if (!item) return res.status(404).json(createErrorResponse('Cliente não encontrado', 404))
+    res.json(createSuccessResponse(item))
+  } catch (error: any) {
+    console.error('[Clients] Erro ao buscar cliente:', error)
+    res.status(500).json(createErrorResponse(error.message || 'Erro ao buscar cliente', 500))
+  }
 })
 
 router.post('/', auth(), async (req, res) => {
-  const { professionalId, name, email, phone, dateOfBirth, document, notes } = req.body
-  const created = await prisma.client.create({
-    data: { professionalId, name, email, phone, dateOfBirth, document, notes }
-  })
-  res.status(201).json(createSuccessResponse(created))
+  try {
+    const { professionalId, name, email, phone, dateOfBirth, document, notes } = req.body
+    
+    if (!professionalId || !name) {
+      return res.status(400).json(createErrorResponse('professionalId e name são obrigatórios', 400))
+    }
+    
+    const created = await prisma.client.create({
+      data: { professionalId, name, email, phone, dateOfBirth, document, notes }
+    })
+    res.status(201).json(createSuccessResponse(created))
+  } catch (error: any) {
+    console.error('[Clients] Erro ao criar cliente:', error)
+    res.status(500).json(createErrorResponse(error.message || 'Erro ao criar cliente', 500))
+  }
 })
 
 router.put('/:id', auth(), async (req, res) => {
-  const id = Number(req.params.id)
-  const { professionalId, name, email, phone, dateOfBirth, document, notes } = req.body
-  const updated = await prisma.client.update({
-    where: { id },
-    data: { professionalId, name, email, phone, dateOfBirth, document, notes }
-  })
-  res.json(createSuccessResponse(updated))
+  try {
+    const id = Number(req.params.id)
+    const { professionalId, name, email, phone, dateOfBirth, document, notes } = req.body
+    
+    const updated = await prisma.client.update({
+      where: { id },
+      data: { professionalId, name, email, phone, dateOfBirth, document, notes }
+    })
+    res.json(createSuccessResponse(updated))
+  } catch (error: any) {
+    console.error('[Clients] Erro ao atualizar cliente:', error)
+    if (error.code === 'P2025') {
+      return res.status(404).json(createErrorResponse('Cliente não encontrado', 404))
+    }
+    res.status(500).json(createErrorResponse(error.message || 'Erro ao atualizar cliente', 500))
+  }
 })
 
 router.delete('/:id', auth(), async (req, res) => {
-  const id = Number(req.params.id)
-  await prisma.client.delete({ where: { id } })
-  res.json(createSuccessResponse({ id }))
+  try {
+    const id = Number(req.params.id)
+    await prisma.client.delete({ where: { id } })
+    res.json(createSuccessResponse({ id }))
+  } catch (error: any) {
+    console.error('[Clients] Erro ao deletar cliente:', error)
+    if (error.code === 'P2025') {
+      return res.status(404).json(createErrorResponse('Cliente não encontrado', 404))
+    }
+    res.status(500).json(createErrorResponse(error.message || 'Erro ao deletar cliente', 500))
+  }
 })
 
 

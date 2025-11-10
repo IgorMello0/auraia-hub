@@ -69,3 +69,4 @@ Você só precisará:
 **Resumo:** Me envie a **DATABASE_URL** e confirme se o banco está acessível. Eu faço o resto! 🎯
 
 
+
