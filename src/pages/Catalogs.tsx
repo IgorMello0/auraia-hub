@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -77,6 +77,7 @@ const Catalogs = () => {
   const { toast } = useToast();
   const { professional } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const statusOptions = [
     { value: 'ativo', label: 'Ativo', color: 'bg-green-100 text-green-800' },
@@ -88,6 +89,19 @@ const Catalogs = () => {
     loadCatalogs();
     loadCategories();
   }, []);
+
+  // Verificar se há um catálogo para editar na navegação
+  useEffect(() => {
+    const state = location.state as { editCatalogId?: number } | null;
+    if (state?.editCatalogId && catalogs.length > 0) {
+      const catalogToEdit = catalogs.find(c => c.id === state.editCatalogId);
+      if (catalogToEdit) {
+        handleOpenDialog(catalogToEdit);
+        // Limpar o estado
+        navigate(location.pathname, { replace: true, state: {} });
+      }
+    }
+  }, [catalogs, location.state]);
 
   const loadCatalogs = async () => {
     setIsLoading(true);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,43 +15,74 @@ import {
   Tag,
   Calendar,
   User,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Clock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { catalogsApi } from '@/lib/api';
 
 interface Catalog {
-  id: string;
-  professional_id: string;
-  title: string;
-  description: string;
-  category: string;
-  price: number;
+  id: number;
+  professionalId: number;
+  categoryId: number | null;
+  name: string;
+  description: string | null;
+  price: number | string;
   status: 'ativo' | 'inativo' | 'rascunho';
-  image_urls: string[];
-  created_at: string;
+  imageUrl: string | null;
+  durationMinutes: number | null;
+  createdAt: string;
+  updatedAt: string;
+  category?: {
+    id: number;
+    name: string;
+  };
+  professional?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  appointments?: any[];
 }
 
 const CatalogDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
-  // Mock data - em produção viria de uma API
-  const catalog: Catalog = {
-    id: id || '1',
-    professional_id: '1',
-    title: 'Pacote Depilação Laser - Axilas',
-    description: 'Tratamento completo de depilação a laser para axilas. Inclui 6 sessões com intervalo de 30 dias entre cada sessão. Utilizamos tecnologia de ponta com laser de diodo, garantindo resultados eficazes e seguros. O tratamento é indicado para todos os tipos de pele e pelos, proporcionando redução significativa e permanente dos pelos.',
-    category: 'Depilação',
-    price: 450,
-    status: 'ativo',
-    image_urls: [
-      'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=800',
-      'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800',
-      'https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=800'
-    ],
-    created_at: '2024-01-15'
+  useEffect(() => {
+    loadCatalog();
+  }, [id]);
+
+  const loadCatalog = async () => {
+    if (!id) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await catalogsApi.getById(parseInt(id));
+      if (response.success && response.data) {
+        setCatalog(response.data);
+      } else {
+        toast({
+          title: "Erro",
+          description: response.error?.message || "Erro ao carregar catálogo",
+          variant: "destructive",
+        });
+        navigate('/catalogs');
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar catálogo",
+        variant: "destructive",
+      });
+      navigate('/catalogs');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -70,24 +101,49 @@ const CatalogDetail = () => {
   };
 
   const handleEdit = () => {
-    toast({
-      title: "Editar catálogo",
-      description: "Funcionalidade de edição será implementada em breve.",
-    });
+    if (!catalog) return;
+    // Navegar para a página de catálogos e abrir o diálogo de edição
+    navigate('/catalogs', { state: { editCatalogId: catalog.id } });
   };
 
-  const handleDelete = () => {
-    toast({
-      title: "Excluir catálogo",
-      description: "Funcionalidade de exclusão será implementada em breve.",
-    });
+  const handleDelete = async () => {
+    if (!catalog) return;
+    
+    if (!confirm('Tem certeza que deseja excluir este item do catálogo?')) {
+      return;
+    }
+
+    try {
+      const response = await catalogsApi.delete(catalog.id);
+      if (response.success) {
+        toast({
+          title: "Catálogo removido",
+          description: "Item foi removido do catálogo com sucesso.",
+        });
+        navigate('/catalogs');
+      } else {
+        toast({
+          title: "Erro",
+          description: response.error?.message || "Erro ao remover catálogo",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao remover catálogo",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleShare = () => {
+    if (!catalog) return;
+    
     if (navigator.share) {
       navigator.share({
-        title: catalog.title,
-        text: catalog.description,
+        title: catalog.name,
+        text: catalog.description || '',
         url: window.location.href,
       });
     } else {
@@ -98,6 +154,39 @@ const CatalogDetail = () => {
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="w-full space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
+        <div className="text-center py-8">
+          <p className="text-sm text-muted-foreground">Carregando catálogo...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!catalog) {
+    return (
+      <div className="w-full space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
+        <div className="text-center py-8">
+          <p className="text-sm text-muted-foreground">Catálogo não encontrado.</p>
+          <Button onClick={() => navigate('/catalogs')} className="mt-4">
+            Voltar para Catálogos
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Preparar imagens para exibição
+  const images = catalog.imageUrl ? [catalog.imageUrl] : [];
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+  const baseUrl = API_BASE_URL.replace('/api', '');
+  
+  // Garantir que URLs de imagens sejam completas
+  const imageUrls = images.map(img => 
+    img.startsWith('http') ? img : `${baseUrl}${img}`
+  );
 
   return (
     <div className="w-full space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
@@ -113,7 +202,7 @@ const CatalogDetail = () => {
           Voltar
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{catalog.title}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{catalog.name}</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
             Detalhes do serviço
           </p>
@@ -141,17 +230,24 @@ const CatalogDetail = () => {
           <Card>
             <CardContent className="p-0">
               <div className="aspect-video relative bg-muted">
-                {catalog.image_urls.length > 0 ? (
+                {imageUrls.length > 0 ? (
                   <>
                     <img
-                      src={catalog.image_urls[selectedImageIndex]}
-                      alt={catalog.title}
+                      src={imageUrls[selectedImageIndex]}
+                      alt={catalog.name}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                      }}
                     />
-                    {catalog.image_urls.length > 1 && (
+                    <div className="hidden w-full h-full flex items-center justify-center">
+                      <ImageIcon className="h-16 w-16 text-muted-foreground" />
+                    </div>
+                    {imageUrls.length > 1 && (
                       <div className="absolute bottom-4 left-4 right-4">
                         <div className="flex gap-2">
-                          {catalog.image_urls.map((_, index) => (
+                          {imageUrls.map((_, index) => (
                             <button
                               key={index}
                               onClick={() => setSelectedImageIndex(index)}
@@ -172,10 +268,10 @@ const CatalogDetail = () => {
               </div>
               
               {/* Thumbnail Navigation */}
-              {catalog.image_urls.length > 1 && (
+              {imageUrls.length > 1 && (
                 <div className="p-4 border-t">
                   <div className="flex gap-2 overflow-x-auto">
-                    {catalog.image_urls.map((url, index) => (
+                    {imageUrls.map((url, index) => (
                       <button
                         key={index}
                         onClick={() => setSelectedImageIndex(index)}
@@ -189,6 +285,9 @@ const CatalogDetail = () => {
                           src={url}
                           alt={`Thumbnail ${index + 1}`}
                           className="w-full h-full object-cover rounded"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
                         />
                       </button>
                     ))}
@@ -208,7 +307,7 @@ const CatalogDetail = () => {
             </CardHeader>
             <CardContent>
               <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
-                {catalog.description}
+                {catalog.description || 'Sem descrição disponível.'}
               </p>
             </CardContent>
           </Card>
@@ -224,7 +323,9 @@ const CatalogDetail = () => {
                   <Tag className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Categoria</p>
-                    <p className="text-sm text-muted-foreground">{catalog.category}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {catalog.category?.name || 'Sem categoria'}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -232,7 +333,7 @@ const CatalogDetail = () => {
                   <div>
                     <p className="text-sm font-medium">Criado em</p>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(catalog.created_at).toLocaleDateString('pt-BR')}
+                      {new Date(catalog.createdAt).toLocaleDateString('pt-BR')}
                     </p>
                   </div>
                 </div>
@@ -240,14 +341,38 @@ const CatalogDetail = () => {
                   <User className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Profissional</p>
-                    <p className="text-sm text-muted-foreground">Dr. João Silva</p>
+                    <p className="text-sm text-muted-foreground">
+                      {catalog.professional?.name || 'Não informado'}
+                    </p>
+                  </div>
+                </div>
+                {catalog.durationMinutes && (
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Duração</p>
+                      <p className="text-sm text-muted-foreground">
+                        {catalog.durationMinutes} minutos
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Agendamentos</p>
+                    <p className="text-sm text-muted-foreground">
+                      {catalog.appointments?.length || 0} agendamento(s)
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Star className="h-4 w-4 text-muted-foreground" />
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">Avaliação</p>
-                    <p className="text-sm text-muted-foreground">4.8 (127 avaliações)</p>
+                    <p className="text-sm font-medium">Última atualização</p>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(catalog.updatedAt).toLocaleDateString('pt-BR')}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -268,12 +393,12 @@ const CatalogDetail = () => {
             <CardContent>
               <div className="text-center space-y-4">
                 <div className="text-3xl font-bold text-primary">
-                  R$ {catalog.price.toFixed(2)}
+                  R$ {Number(catalog.price).toFixed(2)}
                 </div>
                 <div className="flex items-center justify-center gap-2">
                   {getStatusBadge(catalog.status)}
                 </div>
-                <Button className="w-full" size="lg">
+                <Button className="w-full" size="lg" variant="outline">
                   <Heart className="h-4 w-4 mr-2" />
                   Favoritar
                 </Button>
@@ -287,19 +412,15 @@ const CatalogDetail = () => {
               <CardTitle>Ações Rápidas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={handleEdit}>
                 <Edit className="h-4 w-4 mr-2" />
                 Editar Catálogo
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={handleShare}>
                 <Share2 className="h-4 w-4 mr-2" />
                 Compartilhar
               </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Package className="h-4 w-4 mr-2" />
-                Duplicar
-              </Button>
-              <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive">
+              <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive" onClick={handleDelete}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Excluir
               </Button>
@@ -313,20 +434,20 @@ const CatalogDetail = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Visualizações</span>
-                <span className="font-medium">1,247</span>
+                <span className="text-sm text-muted-foreground">Agendamentos</span>
+                <span className="font-medium">{catalog.appointments?.length || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Favoritos</span>
-                <span className="font-medium">89</span>
+                <span className="text-sm text-muted-foreground">Status</span>
+                <span className="font-medium">{getStatusBadge(catalog.status)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Compartilhamentos</span>
-                <span className="font-medium">23</span>
+                <span className="text-sm text-muted-foreground">Criado em</span>
+                <span className="font-medium">{new Date(catalog.createdAt).toLocaleDateString('pt-BR')}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Última atualização</span>
-                <span className="font-medium">2 dias atrás</span>
+                <span className="font-medium">{new Date(catalog.updatedAt).toLocaleDateString('pt-BR')}</span>
               </div>
             </CardContent>
           </Card>
