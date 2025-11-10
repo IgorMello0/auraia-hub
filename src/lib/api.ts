@@ -146,4 +146,20 @@ export const usuariosApi = {
   delete: async (id: number) => apiRequest<{ id: number }>(`/usuarios/${id}`, { method: 'DELETE' }),
 }
 
+// Catálogos
+export const catalogsApi = {
+  getAll: async (params?: { page?: number; pageSize?: number; search?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.page) query.append('page', params.page.toString())
+    if (params?.pageSize) query.append('pageSize', params.pageSize.toString())
+    if (params?.search) query.append('search', params.search)
+    
+    return apiRequest<Array<any>>(`/catalogo?${query.toString()}`)
+  },
+  getById: async (id: number) => apiRequest<any>(`/catalogo/${id}`),
+  create: async (data: any) => apiRequest<any>('/catalogo', { method: 'POST', body: JSON.stringify(data) }),
+  update: async (id: number, data: any) => apiRequest<any>(`/catalogo/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: async (id: number) => apiRequest<{ id: number }>(`/catalogo/${id}`, { method: 'DELETE' }),
+}
+
 

@@ -30,21 +30,63 @@ router.get('/:id', auth(false), async (req, res) => {
 })
 
 router.post('/', auth(), async (req, res) => {
-  const { professionalId, categoryId, name, description, price, imageUrl, status, durationMinutes } = req.body
-  const created = await prisma.catalogItem.create({
-    data: { professionalId, categoryId, name, description, price, imageUrl, status, durationMinutes }
-  })
-  res.status(201).json(createSuccessResponse(created))
+  try {
+    const { professionalId, categoryId, name, description, price, imageUrl, status, durationMinutes } = req.body
+    
+    // Garantir que professionalId seja número
+    const professionalIdNum = typeof professionalId === 'string' ? parseInt(professionalId) : professionalId
+    const categoryIdNum = categoryId ? (typeof categoryId === 'string' ? parseInt(categoryId) : categoryId) : null
+    
+    const created = await prisma.catalogItem.create({
+      data: { 
+        professionalId: professionalIdNum, 
+        categoryId: categoryIdNum, 
+        name, 
+        description, 
+        price, 
+        imageUrl, 
+        status, 
+        durationMinutes 
+      }
+    })
+    res.status(201).json(createSuccessResponse(created))
+  } catch (error) {
+    res.status(400).json(createErrorResponse(
+      error instanceof Error ? error.message : 'Erro ao criar item de catálogo',
+      400
+    ))
+  }
 })
 
 router.put('/:id', auth(), async (req, res) => {
-  const id = Number(req.params.id)
-  const { professionalId, categoryId, name, description, price, imageUrl, status, durationMinutes } = req.body
-  const updated = await prisma.catalogItem.update({
-    where: { id },
-    data: { professionalId, categoryId, name, description, price, imageUrl, status, durationMinutes }
-  })
-  res.json(createSuccessResponse(updated))
+  try {
+    const id = Number(req.params.id)
+    const { professionalId, categoryId, name, description, price, imageUrl, status, durationMinutes } = req.body
+    
+    // Garantir que professionalId seja número
+    const professionalIdNum = typeof professionalId === 'string' ? parseInt(professionalId) : professionalId
+    const categoryIdNum = categoryId ? (typeof categoryId === 'string' ? parseInt(categoryId) : categoryId) : null
+    
+    const updated = await prisma.catalogItem.update({
+      where: { id },
+      data: { 
+        professionalId: professionalIdNum, 
+        categoryId: categoryIdNum, 
+        name, 
+        description, 
+        price, 
+        imageUrl, 
+        status, 
+        durationMinutes 
+      }
+    })
+    res.json(createSuccessResponse(updated))
+  } catch (error) {
+    res.status(400).json(createErrorResponse(
+      error instanceof Error ? error.message : 'Erro ao atualizar item de catálogo',
+      400
+    ))
+  }
 })
 
 router.delete('/:id', auth(), async (req, res) => {

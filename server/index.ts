@@ -15,7 +15,9 @@ import { router as usuariosRouter } from './routes/usuarios'
 import { router as agentesIaRouter } from './routes/agentes-ia'
 import { router as conversasRouter } from './routes/conversas'
 import { router as mensagensRouter } from './routes/mensagens'
+import { router as uploadRouter } from './routes/upload'
 import { createErrorResponse } from './utils/response'
+import path from 'path'
 
 dotenv.config()
 
@@ -41,6 +43,10 @@ app.use('/api/usuarios', usuariosRouter)
 app.use('/api/agentes-ia', agentesIaRouter)
 app.use('/api/conversas', conversasRouter)
 app.use('/api/mensagens', mensagensRouter)
+app.use('/api/upload', uploadRouter)
+
+// Servir arquivos estáticos da pasta uploads
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))
 
 // Error handler
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
