@@ -18,7 +18,10 @@ router.post('/login', async (req, res) => {
     
     console.log('[Login] Tentativa de login:', email)
     
-    const professional = await prisma.professional.findUnique({ where: { email } })
+    const professional = await prisma.professional.findUnique({ 
+      where: { email },
+      include: { company: true }
+    })
     if (!professional) {
       console.log('[Login] Profissional não encontrado:', email)
       return res.status(401).json(createErrorResponse('Credenciais inválidas', 401))
@@ -40,7 +43,11 @@ router.post('/login', async (req, res) => {
         name: professional.name, 
         email: professional.email, 
         phone: professional.phone || '', 
-        specialization: professional.specialization || '' 
+        specialization: professional.specialization || '',
+        company: professional.company ? {
+          id: professional.company.id,
+          name: professional.company.name
+        } : null
       } 
     }))
   } catch (error) {
@@ -121,8 +128,36 @@ router.post('/', async (req, res) => {
     }
     
     const passwordHash = await bcrypt.hash(password, 10)
+    
+    // Criar empresa primeiro
+    const empresaNome = companyName || `Empresa de ${name}`
+    console.log('[Signup] Criando empresa:', empresaNome)
+    
+    const empresa = await prisma.empresa.create({
+      data: {
+        name: empresaNome,
+        isActive: true
+      }
+    })
+    
+    console.log('[Signup] Empresa criada com ID:', empresa.id)
+    
+    // Criar profissional associado à empresa
     const created = await prisma.professional.create({
-      data: { name, email, passwordHash, phone, specialization, companyName, logoUrl, contractType }
+      data: { 
+        name, 
+        email, 
+        passwordHash, 
+        phone, 
+        specialization, 
+        companyId: empresa.id,
+        companyName, 
+        logoUrl, 
+        contractType 
+      },
+      include: {
+        company: true
+      }
     })
     
     const token = jwt.sign({ id: created.id, type: 'profissional' }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '12h' })
@@ -135,7 +170,11 @@ router.post('/', async (req, res) => {
         name: created.name, 
         email: created.email, 
         phone: created.phone || '', 
-        specialization: created.specialization || '' 
+        specialization: created.specialization || '',
+        company: created.company ? {
+          id: created.company.id,
+          name: created.company.name
+        } : null
       } 
     }))
   } catch (error) {

@@ -132,6 +132,21 @@ const Admin = () => {
     company?: { name: string };
   }>>([]);
   const [isLoadingUsuarios, setIsLoadingUsuarios] = useState(true);
+  const [isUsuarioModalOpen, setIsUsuarioModalOpen] = useState(false);
+  const [editingUsuario, setEditingUsuario] = useState<{ 
+    id: number; 
+    name: string; 
+    email: string; 
+    role: string | null; 
+    isActive: boolean;
+  } | null>(null);
+  const [usuarioForm, setUsuarioForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'atendente',
+    isActive: true
+  });
 
   useEffect(() => {
     loadProfessionals();
@@ -187,6 +202,148 @@ const Admin = () => {
     } finally {
       setIsLoadingUsuarios(false);
     }
+  };
+
+  const handleOpenUsuarioDialog = (usuario?: typeof usuarios[0]) => {
+    if (usuario) {
+      setEditingUsuario(usuario);
+      setUsuarioForm({
+        name: usuario.name,
+        email: usuario.email,
+        password: '',
+        role: usuario.role || 'atendente',
+        isActive: usuario.isActive
+      });
+    } else {
+      setEditingUsuario(null);
+      setUsuarioForm({
+        name: '',
+        email: '',
+        password: '',
+        role: 'atendente',
+        isActive: true
+      });
+    }
+    setIsUsuarioModalOpen(true);
+  };
+
+  const handleSaveUsuario = async () => {
+    if (!usuarioForm.name.trim() || !usuarioForm.email.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome e email são obrigatórios",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!editingUsuario && !usuarioForm.password) {
+      toast({
+        title: "Erro",
+        description: "Senha é obrigatória para novos usuários",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (usuarioForm.password && usuarioForm.password.length < 6) {
+      toast({
+        title: "Erro",
+        description: "A senha deve ter pelo menos 6 caracteres",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const data: any = {
+        name: usuarioForm.name,
+        email: usuarioForm.email,
+        role: usuarioForm.role,
+        isActive: usuarioForm.isActive
+      };
+
+      if (usuarioForm.password) {
+        data.password = usuarioForm.password;
+      }
+
+      if (editingUsuario) {
+        const response = await usuariosApi.update(editingUsuario.id, data);
+        if (response.success) {
+          toast({
+            title: "Sucesso",
+            description: "Usuário atualizado com sucesso"
+          });
+          loadUsuarios();
+          setIsUsuarioModalOpen(false);
+          setEditingUsuario(null);
+          setUsuarioForm({ name: '', email: '', password: '', role: 'atendente', isActive: true });
+        } else {
+          toast({
+            title: "Erro",
+            description: response.error?.message || "Erro ao atualizar usuário",
+            variant: "destructive"
+          });
+        }
+      } else {
+        const response = await usuariosApi.create(data);
+        if (response.success) {
+          toast({
+            title: "Sucesso",
+            description: "Usuário criado com sucesso"
+          });
+          loadUsuarios();
+          setIsUsuarioModalOpen(false);
+          setUsuarioForm({ name: '', email: '', password: '', role: 'atendente', isActive: true });
+        } else {
+          toast({
+            title: "Erro",
+            description: response.error?.message || "Erro ao criar usuário",
+            variant: "destructive"
+          });
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar usuário",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteUsuario = async (usuarioId: number) => {
+    if (!confirm('Tem certeza que deseja excluir este usuário?')) {
+      return;
+    }
+
+    try {
+      const response = await usuariosApi.delete(usuarioId);
+      if (response.success) {
+        toast({
+          title: "Sucesso",
+          description: "Usuário excluído com sucesso"
+        });
+        loadUsuarios();
+      } else {
+        toast({
+          title: "Erro",
+          description: response.error?.message || "Erro ao excluir usuário",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir usuário",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const resetUsuarioForm = () => {
+    setUsuarioForm({ name: '', email: '', password: '', role: 'atendente', isActive: true });
+    setEditingUsuario(null);
   };
 
   const loadSystemStats = async () => {
@@ -597,13 +754,114 @@ const Admin = () => {
         <TabsContent value="users" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Usuários Internos
-              </CardTitle>
-              <CardDescription>
-                Gerencie os usuários internos do sistema (admin, atendente, suporte, etc.)
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Usuários Internos
+                  </CardTitle>
+                  <CardDescription>
+                    Gerencie os usuários internos da sua empresa (admin, atendente, suporte, etc.)
+                  </CardDescription>
+                </div>
+                <Dialog open={isUsuarioModalOpen} onOpenChange={(open) => {
+                  setIsUsuarioModalOpen(open);
+                  if (!open) resetUsuarioForm();
+                }}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => handleOpenUsuarioDialog()}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Novo Usuário
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingUsuario ? 'Editar Usuário' : 'Novo Usuário'}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {editingUsuario 
+                          ? 'Atualize as informações do usuário.' 
+                          : 'Crie um novo usuário para sua empresa.'
+                        }
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="usuario-name">Nome *</Label>
+                        <Input
+                          id="usuario-name"
+                          value={usuarioForm.name}
+                          onChange={(e) => setUsuarioForm({...usuarioForm, name: e.target.value})}
+                          placeholder="Nome completo"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="usuario-email">E-mail *</Label>
+                        <Input
+                          id="usuario-email"
+                          type="email"
+                          value={usuarioForm.email}
+                          onChange={(e) => setUsuarioForm({...usuarioForm, email: e.target.value})}
+                          placeholder="email@exemplo.com"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="usuario-password">
+                          Senha {editingUsuario ? '(deixe em branco para manter)' : '*'}
+                        </Label>
+                        <Input
+                          id="usuario-password"
+                          type="password"
+                          value={usuarioForm.password}
+                          onChange={(e) => setUsuarioForm({...usuarioForm, password: e.target.value})}
+                          placeholder="Mínimo 6 caracteres"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="usuario-role">Função</Label>
+                        <Select 
+                          value={usuarioForm.role} 
+                          onValueChange={(value) => setUsuarioForm({...usuarioForm, role: value})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Administrador</SelectItem>
+                            <SelectItem value="atendente">Atendente</SelectItem>
+                            <SelectItem value="suporte">Suporte</SelectItem>
+                            <SelectItem value="gerente">Gerente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="usuario-isActive"
+                          checked={usuarioForm.isActive}
+                          onChange={(e) => setUsuarioForm({...usuarioForm, isActive: e.target.checked})}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <Label htmlFor="usuario-isActive" className="text-sm font-normal cursor-pointer">
+                          Usuário ativo
+                        </Label>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => {
+                        setIsUsuarioModalOpen(false);
+                        resetUsuarioForm();
+                      }}>
+                        Cancelar
+                      </Button>
+                      <Button onClick={handleSaveUsuario}>
+                        {editingUsuario ? 'Atualizar' : 'Criar'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoadingUsuarios ? (
@@ -615,6 +873,7 @@ const Admin = () => {
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>Nenhum usuário encontrado</p>
+                  <p className="text-sm mt-2">Crie o primeiro usuário da sua empresa</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -634,8 +893,8 @@ const Admin = () => {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
+                      <div className="flex items-center gap-2">
+                        <div className="text-right mr-2">
                           <Badge
                             variant={usuario.isActive ? 'default' : 'secondary'}
                             className="text-xs mb-1"
@@ -649,16 +908,18 @@ const Admin = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            // TODO: Implementar edição de usuário
-                            toast({
-                              title: "Em desenvolvimento",
-                              description: "Funcionalidade de edição de usuário será implementada em breve.",
-                            });
-                          }}
+                          onClick={() => handleOpenUsuarioDialog(usuario)}
+                          className="h-8 w-8 p-0"
                         >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Editar
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteUsuario(usuario.id)}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>

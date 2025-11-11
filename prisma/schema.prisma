@@ -96,6 +96,7 @@ model Professional {
   passwordHash     String    @map("password_hash")
   phone            String?
   specialization   String?
+  companyId        Int?      @unique @map("company_id")
   companyName      String?   @map("company_name")
   logoUrl          String?   @map("logo_url")
   contractType     String?   @map("contract_type")
@@ -103,6 +104,7 @@ model Professional {
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
   // Relacionamentos
+  company          Empresa?  @relation(fields: [companyId], references: [id])
   clients          Client[]
   categories       Category[]
   catalogItems     CatalogItem[]
@@ -353,20 +355,21 @@ model Contract {
 
 // Informações sobre as empresas que utilizam a plataforma
 model Empresa {
-  id        Int      @id @default(autoincrement())
-  name      String   // Nome da empresa
-  domain    String?  // Domínio da empresa
-  whatsapp  String?
-  apiKey    String?  @map("api_key")
-  plan      String?  // Plano de assinatura da empresa
-  isActive  Boolean  @default(true) @map("is_active") // Indica se a empresa está ativa
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           Int           @id @default(autoincrement())
+  name         String        // Nome da empresa
+  domain       String?       // Domínio da empresa
+  whatsapp     String?
+  apiKey       String?       @map("api_key")
+  plan         String?       // Plano de assinatura da empresa
+  isActive     Boolean       @default(true) @map("is_active") // Indica se a empresa está ativa
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
 
   // Relacionamentos
-  usuarios  Usuario[]
-  agentesIa AgenteIa[]
-  conversas Conversa[]
+  professional Professional?
+  usuarios     Usuario[]
+  agentesIa    AgenteIa[]
+  conversas    Conversa[]
 
   @@map("empresas")
 }
