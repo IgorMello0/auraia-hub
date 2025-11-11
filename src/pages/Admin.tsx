@@ -35,7 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { professionalsApi, categoriesApi } from '@/lib/api';
+import { professionalsApi, categoriesApi, appointmentsApi, clientsApi, usuariosApi } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -96,28 +96,46 @@ const Admin = () => {
   const { toast } = useToast();
   const { professional } = useAuth();
 
-  // Mock data
-  const systemStats = {
-    totalUsers: 156,
-    activeUsers: 134,
-    totalAppointments: 2847,
+  // System stats state
+  const [systemStats, setSystemStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    totalAppointments: 0,
+    totalClients: 0,
     systemUptime: '99.9%',
     dbSize: '2.3 GB',
     avgResponseTime: '120ms'
-  };
+  });
+  const [recentActivities, setRecentActivities] = useState<Array<{
+    id: number;
+    user: string;
+    action: string;
+    time: string;
+    type: string;
+  }>>([]);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
-  const recentActivities = [
-    { id: 1, user: 'João Silva', action: 'Criou agendamento', time: '2 min atrás', type: 'create' },
-    { id: 2, user: 'Maria Santos', action: 'Cancelou agendamento', time: '5 min atrás', type: 'cancel' },
-    { id: 3, user: 'Pedro Costa', action: 'Atualizou perfil', time: '10 min atrás', type: 'update' },
-    { id: 4, user: 'Ana Silva', action: 'Fez login', time: '15 min atrás', type: 'login' },
-  ];
+  useEffect(() => {
+    loadSystemStats();
+    loadRecentActivities();
+  }, []);
 
   const [professionals, setProfessionals] = useState<Array<{ id: number; name: string; specialization: string | null; status: string; appointments: number }>>([]);
   const [isLoadingProfessionals, setIsLoadingProfessionals] = useState(true);
+  
+  const [usuarios, setUsuarios] = useState<Array<{ 
+    id: number; 
+    name: string; 
+    email: string; 
+    role: string | null; 
+    isActive: boolean;
+    company?: { name: string };
+  }>>([]);
+  const [isLoadingUsuarios, setIsLoadingUsuarios] = useState(true);
 
   useEffect(() => {
     loadProfessionals();
+    loadUsuarios();
   }, []);
 
   const loadProfessionals = async () => {
@@ -143,6 +161,106 @@ const Admin = () => {
     } finally {
       setIsLoadingProfessionals(false);
     }
+  };
+
+  const loadUsuarios = async () => {
+    setIsLoadingUsuarios(true);
+    try {
+      const response = await usuariosApi.getAll({ page: 1, pageSize: 100 });
+      if (response.success && response.data) {
+        const usuariosData = response.data.map((user: any) => ({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role || 'Sem função',
+          isActive: user.isActive !== undefined ? user.isActive : true,
+          company: user.company,
+        }));
+        setUsuarios(usuariosData);
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar usuários",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingUsuarios(false);
+    }
+  };
+
+  const loadSystemStats = async () => {
+    setIsLoadingStats(true);
+    try {
+      // Buscar todos os dados em paralelo
+      const [professionalsRes, appointmentsRes, clientsRes] = await Promise.all([
+        professionalsApi.getAll({ page: 1, pageSize: 1000 }),
+        appointmentsApi.getAll({ page: 1, pageSize: 1000 }),
+        clientsApi.getAll({ page: 1, pageSize: 1000 })
+      ]);
+
+      const totalUsers = professionalsRes.success && professionalsRes.pagination 
+        ? professionalsRes.pagination.total 
+        : (professionalsRes.success && professionalsRes.data ? professionalsRes.data.length : 0);
+      
+      const activeUsers = professionalsRes.success && professionalsRes.data
+        ? professionalsRes.data.length // Considerando todos como ativos por enquanto
+        : 0;
+
+      const totalAppointments = appointmentsRes.success && appointmentsRes.pagination
+        ? appointmentsRes.pagination.total
+        : (appointmentsRes.success && appointmentsRes.data ? appointmentsRes.data.length : 0);
+
+      const totalClients = clientsRes.success && clientsRes.pagination
+        ? clientsRes.pagination.total
+        : (clientsRes.success && clientsRes.data ? clientsRes.data.length : 0);
+
+      setSystemStats({
+        totalUsers,
+        activeUsers,
+        totalAppointments,
+        totalClients,
+        systemUptime: '99.9%', // Pode ser calculado ou vindo de um endpoint específico
+        dbSize: '2.3 GB', // Pode ser calculado ou vindo de um endpoint específico
+        avgResponseTime: '120ms' // Pode ser calculado ou vindo de um endpoint específico
+      });
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
+
+  const loadRecentActivities = async () => {
+    try {
+      // Buscar últimos agendamentos como atividades recentes
+      const response = await appointmentsApi.getAll({ page: 1, pageSize: 10 });
+      if (response.success && response.data) {
+        const activities = response.data.slice(0, 5).map((appointment: any, index: number) => {
+          const timeAgo = getTimeAgo(new Date(appointment.createdAt));
+          return {
+            id: appointment.id,
+            user: appointment.client?.name || appointment.professional?.name || 'Usuário',
+            action: `Agendamento ${appointment.status === 'cancelado' ? 'cancelado' : appointment.status === 'concluido' ? 'concluído' : 'criado'}`,
+            time: timeAgo,
+            type: appointment.status === 'cancelado' ? 'cancel' : appointment.status === 'concluido' ? 'update' : 'create'
+          };
+        });
+        setRecentActivities(activities);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar atividades recentes:', error);
+    }
+  };
+
+  const getTimeAgo = (date: Date): string => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return `${diffInSeconds} seg atrás`;
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min atrás`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} horas atrás`;
+    return `${Math.floor(diffInSeconds / 86400)} dias atrás`;
   };
 
   const getActivityIcon = (type: string) => {
@@ -359,10 +477,16 @@ const Admin = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.totalUsers}</div>
-            <p className="text-xs text-muted-foreground">
-              +12% em relação ao mês passado
-            </p>
+            {isLoadingStats ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{systemStats.totalUsers}</div>
+                <p className="text-xs text-muted-foreground">
+                  Profissionais cadastrados
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -372,10 +496,19 @@ const Admin = () => {
             <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.activeUsers}</div>
-            <p className="text-xs text-muted-foreground">
-              {((systemStats.activeUsers / systemStats.totalUsers) * 100).toFixed(1)}% do total
-            </p>
+            {isLoadingStats ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{systemStats.activeUsers}</div>
+                <p className="text-xs text-muted-foreground">
+                  {systemStats.totalUsers > 0 
+                    ? `${((systemStats.activeUsers / systemStats.totalUsers) * 100).toFixed(1)}% do total`
+                    : 'Profissionais ativos'
+                  }
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -385,23 +518,35 @@ const Admin = () => {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.totalAppointments}</div>
-            <p className="text-xs text-muted-foreground">
-              Total histórico
-            </p>
+            {isLoadingStats ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{systemStats.totalAppointments}</div>
+                <p className="text-xs text-muted-foreground">
+                  Total histórico
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Uptime</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.systemUptime}</div>
-            <p className="text-xs text-muted-foreground">
-              Últimos 30 dias
-            </p>
+            {isLoadingStats ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{systemStats.totalClients}</div>
+                <p className="text-xs text-muted-foreground">
+                  Clientes cadastrados
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -426,18 +571,25 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-center gap-3">
-                    {getActivityIcon(activity.type)}
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">{activity.user}</div>
-                      <div className="text-xs text-muted-foreground">{activity.action}</div>
+              {recentActivities.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhuma atividade recente</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentActivities.map((activity) => (
+                    <div key={activity.id} className="flex items-center gap-3">
+                      {getActivityIcon(activity.type)}
+                      <div className="flex-1">
+                        <div className="text-sm font-medium">{activity.user}</div>
+                        <div className="text-xs text-muted-foreground">{activity.action}</div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">{activity.time}</div>
                     </div>
-                    <div className="text-xs text-muted-foreground">{activity.time}</div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -447,53 +599,70 @@ const Admin = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Profissionais Cadastrados
+                Usuários Internos
               </CardTitle>
               <CardDescription>
-                Gerencie os profissionais do sistema
+                Gerencie os usuários internos do sistema (admin, atendente, suporte, etc.)
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoadingProfessionals ? (
+              {isLoadingUsuarios ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  <span className="ml-2 text-sm text-muted-foreground">Carregando profissionais...</span>
+                  <span className="ml-2 text-sm text-muted-foreground">Carregando usuários...</span>
+                </div>
+              ) : usuarios.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum usuário encontrado</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {professionals.map((professional) => {
-                    return (
-                      <div key={professional.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                            <Users className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <div className="font-medium">{professional.name}</div>
-                            <div className="text-sm text-muted-foreground">{professional.specialization}</div>
-                          </div>
+                  {usuarios.map((usuario) => (
+                    <div key={usuario.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                          <Users className="h-5 w-5 text-primary" />
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="text-sm font-medium">{professional.appointments} agendamentos</div>
-                            <Badge
-                              variant={professional.status === 'ativo' ? 'default' : 'secondary'}
-                              className="text-xs"
-                            >
-                              {professional.status}
-                            </Badge>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setActiveTab('professionals')}
-                          >
-                            Gerenciar
-                          </Button>
+                        <div>
+                          <div className="font-medium">{usuario.name}</div>
+                          <div className="text-sm text-muted-foreground">{usuario.email}</div>
+                          {usuario.company && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Empresa: {usuario.company.name}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <Badge
+                            variant={usuario.isActive ? 'default' : 'secondary'}
+                            className="text-xs mb-1"
+                          >
+                            {usuario.isActive ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {usuario.role}
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            // TODO: Implementar edição de usuário
+                            toast({
+                              title: "Em desenvolvimento",
+                              description: "Funcionalidade de edição de usuário será implementada em breve.",
+                            });
+                          }}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Editar
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>

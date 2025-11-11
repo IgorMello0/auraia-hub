@@ -50,6 +50,16 @@ async function apiRequest<T>(
     console.log('[API] Response data:', data)
     
     if (!response.ok) {
+      // Se for erro de autenticação (401), limpar token e redirecionar para login
+      if (response.status === 401) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('professional')
+        // Redirecionar para login apenas se não estiver já na página de login
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+          window.location.href = '/login'
+        }
+      }
+      
       return {
         success: false,
         error: data.error || { message: data.message || 'Erro na requisição', code: response.status },
@@ -144,6 +154,24 @@ export const usuariosApi = {
   create: async (data: any) => apiRequest<any>('/usuarios', { method: 'POST', body: JSON.stringify(data) }),
   update: async (id: number, data: any) => apiRequest<any>(`/usuarios/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: async (id: number) => apiRequest<{ id: number }>(`/usuarios/${id}`, { method: 'DELETE' }),
+}
+
+// Agendamentos
+export const appointmentsApi = {
+  getAll: async (params?: { page?: number; pageSize?: number; professionalId?: number; clientId?: number; status?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.page) query.append('page', params.page.toString())
+    if (params?.pageSize) query.append('pageSize', params.pageSize.toString())
+    if (params?.professionalId) query.append('professionalId', params.professionalId.toString())
+    if (params?.clientId) query.append('clientId', params.clientId.toString())
+    if (params?.status) query.append('status', params.status)
+    
+    return apiRequest<Array<any>>(`/agendamentos?${query.toString()}`)
+  },
+  getById: async (id: number) => apiRequest<any>(`/agendamentos/${id}`),
+  create: async (data: any) => apiRequest<any>('/agendamentos', { method: 'POST', body: JSON.stringify(data) }),
+  update: async (id: number, data: any) => apiRequest<any>(`/agendamentos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: async (id: number) => apiRequest<{ id: number }>(`/agendamentos/${id}`, { method: 'DELETE' }),
 }
 
 // Catálogos
