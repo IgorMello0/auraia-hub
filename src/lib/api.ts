@@ -190,4 +190,32 @@ export const catalogsApi = {
   delete: async (id: number) => apiRequest<{ id: number }>(`/catalogo/${id}`, { method: 'DELETE' }),
 }
 
+// Módulos do sistema
+export const modulesApi = {
+  getAll: async () => apiRequest<Array<any>>('/modules'),
+  getByCode: async (code: string) => apiRequest<any>(`/modules/${code}`),
+  create: async (data: any) => apiRequest<any>('/modules', { method: 'POST', body: JSON.stringify(data) }),
+  update: async (id: number, data: any) => apiRequest<any>(`/modules/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: async (id: number) => apiRequest<{ id: number }>(`/modules/${id}`, { method: 'DELETE' }),
+}
+
+// Permissões
+export const permissionsApi = {
+  // Permissões de profissionais
+  getProfessionalPermissions: async (professionalId: number) => 
+    apiRequest<Array<{ moduleId: number; moduleCode: string; moduleName: string; moduleIcon?: string; hasAccess: boolean }>>(`/permissions/professional/${professionalId}`),
+  updateProfessionalPermissions: async (professionalId: number, permissions: Array<{ moduleId: number; hasAccess: boolean }>) => 
+    apiRequest<any>(`/permissions/professional/${professionalId}`, { method: 'PUT', body: JSON.stringify({ permissions }) }),
+  
+  // Permissões de usuários
+  getUserPermissions: async (userId: number) => 
+    apiRequest<Array<{ moduleId: number; moduleCode: string; moduleName: string; moduleIcon?: string; hasAccess: boolean; canEdit?: boolean }>>(`/permissions/user/${userId}`),
+  updateUserPermissions: async (userId: number, permissions: Array<{ moduleId: number; hasAccess: boolean }>) => 
+    apiRequest<any>(`/permissions/user/${userId}`, { method: 'PUT', body: JSON.stringify({ permissions }) }),
+  
+  // Minhas permissões (usuário logado)
+  getMyPermissions: async () => 
+    apiRequest<Array<{ moduleCode: string; moduleName: string; hasAccess: boolean }>>('/permissions/my-permissions'),
+}
+
 

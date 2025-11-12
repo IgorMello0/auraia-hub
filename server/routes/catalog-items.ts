@@ -1,11 +1,11 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
-import { auth } from '../middleware/auth'
+import { auth, requireModule } from '../middleware/auth'
 import { createErrorResponse, createSuccessResponse, parsePagination } from '../utils/response'
 
 export const router = Router()
 
-router.get('/', auth(false), async (req, res) => {
+router.get('/', auth(false), requireModule('catalogos'), async (req, res) => {
   const { skip, take, page, pageSize } = parsePagination(req.query)
   const [items, total] = await Promise.all([
     prisma.catalogItem.findMany({
@@ -19,7 +19,7 @@ router.get('/', auth(false), async (req, res) => {
   res.json(createSuccessResponse(items, { page, pageSize, total }))
 })
 
-router.get('/:id', auth(false), async (req, res) => {
+router.get('/:id', auth(false), requireModule('catalogos'), async (req, res) => {
   const id = Number(req.params.id)
   const item = await prisma.catalogItem.findUnique({
     where: { id },
@@ -29,7 +29,7 @@ router.get('/:id', auth(false), async (req, res) => {
   res.json(createSuccessResponse(item))
 })
 
-router.post('/', auth(), async (req, res) => {
+router.post('/', auth(), requireModule('catalogos'), async (req, res) => {
   try {
     const { professionalId, categoryId, name, description, price, imageUrl, status, durationMinutes } = req.body
     
@@ -58,7 +58,7 @@ router.post('/', auth(), async (req, res) => {
   }
 })
 
-router.put('/:id', auth(), async (req, res) => {
+router.put('/:id', auth(), requireModule('catalogos'), async (req, res) => {
   try {
     const id = Number(req.params.id)
     const { professionalId, categoryId, name, description, price, imageUrl, status, durationMinutes } = req.body
@@ -89,7 +89,7 @@ router.put('/:id', auth(), async (req, res) => {
   }
 })
 
-router.delete('/:id', auth(), async (req, res) => {
+router.delete('/:id', auth(), requireModule('catalogos'), async (req, res) => {
   const id = Number(req.params.id)
   await prisma.catalogItem.delete({ where: { id } })
   res.json(createSuccessResponse({ id }))

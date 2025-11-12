@@ -1,11 +1,11 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
-import { auth } from '../middleware/auth'
+import { auth, requireModule } from '../middleware/auth'
 import { createErrorResponse, createSuccessResponse, parsePagination } from '../utils/response'
 
 export const router = Router()
 
-router.get('/', auth(), async (req, res) => {
+router.get('/', auth(), requireModule('conversas'), async (req, res) => {
   const { skip, take, page, pageSize } = parsePagination(req.query)
   const { companyId, agentId, clientId, professionalId } = req.query as any
   const where: any = {}
@@ -27,7 +27,7 @@ router.get('/', auth(), async (req, res) => {
   res.json(createSuccessResponse(items, { page, pageSize, total }))
 })
 
-router.get('/:id', auth(), async (req, res) => {
+router.get('/:id', auth(), requireModule('conversas'), async (req, res) => {
   const id = Number(req.params.id)
   const item = await prisma.conversa.findUnique({
     where: { id },
@@ -37,7 +37,7 @@ router.get('/:id', auth(), async (req, res) => {
   res.json(createSuccessResponse(item))
 })
 
-router.post('/', auth(), async (req, res) => {
+router.post('/', auth(), requireModule('conversas'), async (req, res) => {
   const { companyId, agentId, clientId, professionalId, app, channel, startedAt } = req.body
   const created = await prisma.conversa.create({ data: { companyId, agentId, clientId, professionalId, app, channel, startedAt } })
   res.status(201).json(createSuccessResponse(created))

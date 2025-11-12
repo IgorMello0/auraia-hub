@@ -19,25 +19,40 @@ router.post('/login', async (req, res) => {
 
 router.get('/', auth(), async (req, res) => {
   try {
-    // Verificar se é um profissional autenticado
-    if (req.user?.type !== 'profissional') {
+    // Verificar se é um profissional ou usuário admin autenticado
+    const isProfessional = req.user?.type === 'profissional';
+    const isUserAdmin = req.user?.type === 'usuario' && req.user?.role === 'admin';
+    
+    if (!isProfessional && !isUserAdmin) {
       return res.status(403).json(createErrorResponse('Acesso negado', 403))
     }
 
-    // Buscar o profissional e sua empresa
-    const professional = await prisma.professional.findUnique({
-      where: { id: req.user.id },
-      select: { companyId: true }
-    })
+    let companyId: number | undefined;
 
-    if (!professional || !professional.companyId) {
-      return res.status(400).json(createErrorResponse('Profissional não possui empresa associada', 400))
+    // Se for profissional, buscar empresa
+    if (isProfessional) {
+      const professional = await prisma.professional.findUnique({
+        where: { id: req.user.id },
+        select: { companyId: true }
+      })
+
+      if (!professional || !professional.companyId) {
+        return res.status(400).json(createErrorResponse('Profissional não possui empresa associada', 400))
+      }
+      companyId = professional.companyId;
+    } else if (isUserAdmin) {
+      // Se for usuário admin, usar a empresa dele
+      companyId = req.user.companyId!;
+    }
+
+    if (!companyId) {
+      return res.status(400).json(createErrorResponse('Empresa não encontrada', 400))
     }
 
     const { skip, take, page, pageSize } = parsePagination(req.query)
     
-    // Filtrar usuários pela empresa do profissional
-    const where = { companyId: professional.companyId }
+    // Filtrar usuários pela empresa
+    const where = { companyId }
     
     const [items, total] = await Promise.all([
       prisma.usuario.findMany({ 
@@ -62,28 +77,43 @@ router.post('/', auth(), async (req, res) => {
     console.log('[Usuarios] Iniciando criação de usuário')
     console.log('[Usuarios] User autenticado:', req.user)
     
-    // Verificar se é um profissional autenticado
-    if (req.user?.type !== 'profissional') {
+    // Verificar se é um profissional ou usuário admin autenticado
+    const isProfessional = req.user?.type === 'profissional';
+    const isUserAdmin = req.user?.type === 'usuario' && req.user?.role === 'admin';
+    
+    if (!isProfessional && !isUserAdmin) {
       console.log('[Usuarios] Erro: Tipo de usuário inválido:', req.user?.type)
       return res.status(403).json(createErrorResponse('Acesso negado', 403))
     }
 
-    // Buscar o profissional e sua empresa
-    const professional = await prisma.professional.findUnique({
-      where: { id: req.user.id },
-      select: { id: true, name: true, companyId: true }
-    })
+    let companyId: number;
 
-    console.log('[Usuarios] Profissional encontrado:', professional)
+    // Buscar empresa do usuário criador
+    if (isProfessional) {
+      const professional = await prisma.professional.findUnique({
+        where: { id: req.user.id },
+        select: { id: true, name: true, companyId: true }
+      })
 
-    if (!professional) {
-      console.log('[Usuarios] Erro: Profissional não encontrado')
-      return res.status(404).json(createErrorResponse('Profissional não encontrado', 404))
-    }
+      console.log('[Usuarios] Profissional encontrado:', professional)
 
-    if (!professional.companyId) {
-      console.log('[Usuarios] Erro: Profissional sem empresa associada')
-      return res.status(400).json(createErrorResponse('Profissional não possui empresa associada. Por favor, entre em contato com o suporte.', 400))
+      if (!professional) {
+        console.log('[Usuarios] Erro: Profissional não encontrado')
+        return res.status(404).json(createErrorResponse('Profissional não encontrado', 404))
+      }
+
+      if (!professional.companyId) {
+        console.log('[Usuarios] Erro: Profissional sem empresa associada')
+        return res.status(400).json(createErrorResponse('Profissional não possui empresa associada. Por favor, entre em contato com o suporte.', 400))
+      }
+      
+      companyId = professional.companyId;
+    } else if (isUserAdmin) {
+      // Usuário admin usa sua própria empresa
+      companyId = req.user.companyId!;
+      console.log('[Usuarios] Usuário admin criando, empresa:', companyId)
+    } else {
+      return res.status(403).json(createErrorResponse('Acesso negado', 403))
     }
 
     const { name, email, password, role, isActive } = req.body
@@ -107,12 +137,12 @@ router.post('/', auth(), async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 10)
     
-    console.log('[Usuarios] Tentando criar usuário para empresa ID:', professional.companyId)
+    console.log('[Usuarios] Tentando criar usuário para empresa ID:', companyId)
     
-    // Usar o companyId do profissional logado
+    // Usar o companyId do usuário criador
     const created = await prisma.usuario.create({ 
       data: { 
-        companyId: professional.companyId,
+        companyId,
         name, 
         email, 
         passwordHash, 
@@ -135,28 +165,38 @@ router.put('/:id', auth(), async (req, res) => {
   try {
     const id = Number(req.params.id)
     
-    // Verificar se é um profissional autenticado
-    if (req.user?.type !== 'profissional') {
+    // Verificar se é um profissional ou usuário admin autenticado
+    const isProfessional = req.user?.type === 'profissional';
+    const isUserAdmin = req.user?.type === 'usuario' && req.user?.role === 'admin';
+    
+    if (!isProfessional && !isUserAdmin) {
       return res.status(403).json(createErrorResponse('Acesso negado', 403))
     }
 
-    // Buscar o profissional e sua empresa
-    const professional = await prisma.professional.findUnique({
-      where: { id: req.user.id },
-      select: { companyId: true }
-    })
+    let companyId: number | undefined;
 
-    if (!professional || !professional.companyId) {
-      return res.status(400).json(createErrorResponse('Profissional não possui empresa associada', 400))
+    // Buscar empresa
+    if (isProfessional) {
+      const professional = await prisma.professional.findUnique({
+        where: { id: req.user.id },
+        select: { companyId: true }
+      })
+
+      if (!professional || !professional.companyId) {
+        return res.status(400).json(createErrorResponse('Profissional não possui empresa associada', 400))
+      }
+      companyId = professional.companyId;
+    } else if (isUserAdmin) {
+      companyId = req.user.companyId!;
     }
 
-    // Verificar se o usuário pertence à empresa do profissional
+    // Verificar se o usuário pertence à mesma empresa
     const usuario = await prisma.usuario.findUnique({ where: { id } })
     if (!usuario) {
       return res.status(404).json(createErrorResponse('Usuário não encontrado', 404))
     }
 
-    if (usuario.companyId !== professional.companyId) {
+    if (usuario.companyId !== companyId) {
       return res.status(403).json(createErrorResponse('Você não pode editar usuários de outra empresa', 403))
     }
 
@@ -202,28 +242,38 @@ router.delete('/:id', auth(), async (req, res) => {
   try {
     const id = Number(req.params.id)
     
-    // Verificar se é um profissional autenticado
-    if (req.user?.type !== 'profissional') {
+    // Verificar se é um profissional ou usuário admin autenticado
+    const isProfessional = req.user?.type === 'profissional';
+    const isUserAdmin = req.user?.type === 'usuario' && req.user?.role === 'admin';
+    
+    if (!isProfessional && !isUserAdmin) {
       return res.status(403).json(createErrorResponse('Acesso negado', 403))
     }
 
-    // Buscar o profissional e sua empresa
-    const professional = await prisma.professional.findUnique({
-      where: { id: req.user.id },
-      select: { companyId: true }
-    })
+    let companyId: number | undefined;
 
-    if (!professional || !professional.companyId) {
-      return res.status(400).json(createErrorResponse('Profissional não possui empresa associada', 400))
+    // Buscar empresa
+    if (isProfessional) {
+      const professional = await prisma.professional.findUnique({
+        where: { id: req.user.id },
+        select: { companyId: true }
+      })
+
+      if (!professional || !professional.companyId) {
+        return res.status(400).json(createErrorResponse('Profissional não possui empresa associada', 400))
+      }
+      companyId = professional.companyId;
+    } else if (isUserAdmin) {
+      companyId = req.user.companyId!;
     }
 
-    // Verificar se o usuário pertence à empresa do profissional
+    // Verificar se o usuário pertence à mesma empresa
     const usuario = await prisma.usuario.findUnique({ where: { id } })
     if (!usuario) {
       return res.status(404).json(createErrorResponse('Usuário não encontrado', 404))
     }
 
-    if (usuario.companyId !== professional.companyId) {
+    if (usuario.companyId !== companyId) {
       return res.status(403).json(createErrorResponse('Você não pode excluir usuários de outra empresa', 403))
     }
 

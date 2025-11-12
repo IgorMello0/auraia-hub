@@ -21,48 +21,64 @@ const menuItems = [
     title: 'Dashboard',
     url: '/dashboard',
     icon: LayoutDashboard,
+    moduleCode: 'dashboard',
   },
   {
     title: 'Agendamentos',
     url: '/appointments',
     icon: Calendar,
+    moduleCode: 'agendamentos',
   },
   {
     title: 'Clientes',
     url: '/clients',
     icon: User,
+    moduleCode: 'clientes',
   },
   {
     title: 'Relatórios',
     url: '/reports',
     icon: BarChart3,
+    moduleCode: 'relatorios',
   },
   {
     title: 'Pagamentos',
     url: '/payments',
     icon: CreditCard,
+    moduleCode: 'pagamentos',
   },
   {
     title: 'Conversas',
     url: '/conversations',
     icon: MessageSquare,
+    moduleCode: 'conversas',
   },
   {
     title: 'Catálogos',
     url: '/catalogs',
     icon: Package,
+    moduleCode: 'catalogos',
   },
   {
     title: 'Assinatura de Contratos',
     url: '/contracts',
     icon: FileSignature,
+    moduleCode: 'contratos',
   },
 ];
 
 export function AppSidebar() {
-  const { professional, logout } = useAuth();
+  const { professional, logout, hasModuleAccess, permissions } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Filtrar itens do menu baseado nas permissões
+  const filteredMenuItems = menuItems.filter((item) => {
+    // Se não há permissões carregadas ainda, não mostrar nada por segurança
+    if (permissions.length === 0) return false;
+    
+    return hasModuleAccess(item.moduleCode);
+  });
 
   const handleLogout = () => {
     logout();
@@ -99,7 +115,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {filteredMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild

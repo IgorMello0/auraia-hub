@@ -1,138 +1,196 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import {
-  Calendar,
-  MessageCircle,
-  DollarSign,
-  Users,
-  BarChart3,
-} from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { permissionsApi, modulesApi } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import * as LucideIcons from 'lucide-react';
 
 interface Module {
-  id: string;
-  name: string;
-  description: string;
-  icon: any;
-  enabled: boolean;
+  moduleId: number;
+  moduleCode: string;
+  moduleName: string;
+  moduleIcon?: string;
+  hasAccess: boolean;
+  canEdit?: boolean;
 }
 
 interface ModulesAccessTabProps {
-  professionalId: number;
+  targetId: number;
+  targetType: 'professional' | 'user';
 }
 
-const defaultModules: Module[] = [
-  {
-    id: 'appointments',
-    name: 'Agendamentos',
-    description: 'Visualizar e gerenciar agendamentos',
-    icon: Calendar,
-    enabled: true,
-  },
-  {
-    id: 'conversations',
-    name: 'Conversas',
-    description: 'Acessar mensagens e conversas com clientes',
-    icon: MessageCircle,
-    enabled: true,
-  },
-  {
-    id: 'financial',
-    name: 'Financeiro',
-    description: 'Visualizar relatórios financeiros e pagamentos',
-    icon: DollarSign,
-    enabled: false,
-  },
-  {
-    id: 'clients',
-    name: 'Clientes',
-    description: 'Gerenciar cadastro de clientes',
-    icon: Users,
-    enabled: true,
-  },
-  {
-    id: 'reports',
-    name: 'Relatórios',
-    description: 'Acessar relatórios e análises',
-    icon: BarChart3,
-    enabled: true,
-  },
-];
-
-export const ModulesAccessTab = ({ professionalId }: ModulesAccessTabProps) => {
+export const ModulesAccessTab = ({ targetId, targetType }: ModulesAccessTabProps) => {
   const [modules, setModules] = useState<Module[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Carregar do localStorage ou usar defaults
-    const storageKey = `modules_professional_${professionalId}`;
-    const stored = localStorage.getItem(storageKey);
-    
-    if (stored) {
-      const storedData = JSON.parse(stored);
-      // Merge stored data with default icons
-      const mergedModules = defaultModules.map(defaultModule => {
-        const storedModule = storedData.find((m: any) => m.id === defaultModule.id);
-        return storedModule ? { ...defaultModule, enabled: storedModule.enabled } : defaultModule;
-      });
-      setModules(mergedModules);
-    } else {
-      setModules(defaultModules);
-    }
-  }, [professionalId]);
+    loadModules();
+  }, [targetId, targetType]);
 
-  const handleToggleModule = (moduleId: string) => {
-    const updatedModules = modules.map((module) =>
-      module.id === moduleId ? { ...module, enabled: !module.enabled } : module
-    );
-    setModules(updatedModules);
-    
-    // Salvar no localStorage (sem os ícones)
-    const storageKey = `modules_professional_${professionalId}`;
-    const dataToStore = updatedModules.map(({ id, enabled }) => ({ id, enabled }));
-    localStorage.setItem(storageKey, JSON.stringify(dataToStore));
+  const loadModules = async () => {
+    setIsLoading(true);
+    try {
+      const response = targetType === 'professional'
+        ? await permissionsApi.getProfessionalPermissions(targetId)
+        : await permissionsApi.getUserPermissions(targetId);
+
+      if (response.success && response.data) {
+        setModules(response.data);
+      } else {
+        toast({
+          title: 'Erro',
+          description: 'Erro ao carregar permissões',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      console.error('[ModulesAccessTab] Error loading modules:', error);
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao carregar permissões',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleToggleModule = async (moduleId: number, currentAccess: boolean) => {
+    // Se for usuário e o profissional não tem acesso (canEdit = false), não permitir edição
+    const module = modules.find((m) => m.moduleId === moduleId);
+    if (targetType === 'user' && module?.canEdit === false) {
+      toast({
+        title: 'Acesso negado',
+        description: 'Você não pode liberar este módulo pois você não tem acesso a ele',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const newAccess = !currentAccess;
+      
+      // Atualizar permissão no backend
+      const updateFunc = targetType === 'professional'
+        ? permissionsApi.updateProfessionalPermissions
+        : permissionsApi.updateUserPermissions;
+
+      const response = await updateFunc(targetId, [
+        { moduleId, hasAccess: newAccess },
+      ]);
+
+      if (response.success) {
+        // Atualizar estado local
+        setModules(modules.map((m) =>
+          m.moduleId === moduleId ? { ...m, hasAccess: newAccess } : m
+        ));
+
+        toast({
+          title: 'Sucesso',
+          description: `Permissão ${newAccess ? 'concedida' : 'removida'} com sucesso`,
+        });
+      } else {
+        toast({
+          title: 'Erro',
+          description: response.error?.message || 'Erro ao atualizar permissão',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      console.error('[ModulesAccessTab] Error updating permission:', error);
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao atualizar permissão',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const getIcon = (iconName?: string) => {
+    if (!iconName) return LucideIcons.Box;
+    const Icon = (LucideIcons as any)[iconName];
+    return Icon || LucideIcons.Box;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       <div>
         <h3 className="text-lg font-semibold mb-2">Módulos do Sistema</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Habilite ou desabilite o acesso aos diferentes módulos do sistema
+          {targetType === 'professional'
+            ? 'Controle quais módulos este profissional pode acessar'
+            : 'Controle quais módulos este usuário pode acessar'}
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {modules.map((module) => {
-          const Icon = module.icon;
+          const Icon = getIcon(module.moduleIcon);
+          const isDisabled = targetType === 'user' && module.canEdit === false;
+          
           return (
-            <Card key={module.id} className={module.enabled ? 'border-primary/50' : ''}>
+            <Card 
+              key={module.moduleId} 
+              className={`${module.hasAccess ? 'border-primary/50' : ''} ${isDisabled ? 'opacity-50' : ''}`}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      module.enabled ? 'bg-primary/10' : 'bg-muted'
+                      module.hasAccess ? 'bg-primary/10' : 'bg-muted'
                     }`}>
-                      <Icon className={`h-5 w-5 ${module.enabled ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <Icon className={`h-5 w-5 ${module.hasAccess ? 'text-primary' : 'text-muted-foreground'}`} />
                     </div>
                     <div>
-                      <CardTitle className="text-base">{module.name}</CardTitle>
+                      <CardTitle className="text-base">{module.moduleName}</CardTitle>
                       <CardDescription className="text-xs mt-1">
-                        {module.description}
+                        {module.moduleCode}
                       </CardDescription>
                     </div>
                   </div>
                   <Switch
-                    id={module.id}
-                    checked={module.enabled}
-                    onCheckedChange={() => handleToggleModule(module.id)}
+                    id={`module-${module.moduleId}`}
+                    checked={module.hasAccess}
+                    disabled={isSaving || isDisabled}
+                    onCheckedChange={() => handleToggleModule(module.moduleId, module.hasAccess)}
                   />
                 </div>
               </CardHeader>
+              {isDisabled && (
+                <CardContent className="pt-0">
+                  <p className="text-xs text-muted-foreground italic">
+                    Você não tem acesso a este módulo
+                  </p>
+                </CardContent>
+              )}
             </Card>
           );
         })}
       </div>
+
+      {modules.length === 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">
+              Nenhum módulo encontrado
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="bg-muted/50">
         <CardContent className="pt-6">
@@ -143,7 +201,9 @@ export const ModulesAccessTab = ({ professionalId }: ModulesAccessTabProps) => {
             <div className="space-y-1">
               <p className="text-sm font-medium">Informação sobre Módulos</p>
               <p className="text-xs text-muted-foreground">
-                As alterações são salvas automaticamente. O profissional verá apenas os módulos habilitados no menu lateral.
+                {targetType === 'professional'
+                  ? 'As alterações são salvas automaticamente. O profissional verá apenas os módulos habilitados.'
+                  : 'Usuários só podem ter acesso aos módulos que você (profissional) também possui. As alterações são salvas automaticamente.'}
               </p>
             </div>
           </div>

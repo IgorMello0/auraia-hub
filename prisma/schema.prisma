@@ -117,6 +117,7 @@ model Professional {
   auditLogs        AuditLog[]
   contracts        Contract[]
   conversas        Conversa[]
+  permissions      ProfessionalPermission[]
 
   @@map("professionals")
 }
@@ -387,7 +388,8 @@ model Usuario {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relacionamentos
-  company      Empresa  @relation(fields: [companyId], references: [id])
+  company      Empresa           @relation(fields: [companyId], references: [id])
+  permissions  UserPermission[]
 
   @@map("usuarios")
 }
@@ -464,4 +466,58 @@ model ChatLog {
   message   Mensagem @relation(fields: [messageId], references: [id])
 
   @@map("chat_logs")
+}
+
+// ==================== CONTROLE DE ACESSO ====================
+
+// Módulos do sistema que podem ser controlados
+model Module {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique // Ex: "dashboard", "clientes", "agendamentos"
+  name        String   // Ex: "Dashboard", "Clientes", "Agendamentos"
+  description String?  // Descrição do módulo
+  icon        String?  // Nome do ícone lucide-react
+  isActive    Boolean  @default(true) @map("is_active") // Indica se o módulo está ativo
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  professionalPermissions ProfessionalPermission[]
+  userPermissions        UserPermission[]
+
+  @@map("modules")
+}
+
+// Permissões de acesso dos Profissionais aos módulos
+model ProfessionalPermission {
+  id             Int      @id @default(autoincrement())
+  professionalId Int      @map("professional_id")
+  moduleId       Int      @map("module_id")
+  hasAccess      Boolean  @default(true) @map("has_access") // Se o profissional tem acesso ao módulo
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  module         Module       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalId, moduleId])
+  @@map("professional_permissions")
+}
+
+// Permissões de acesso dos Usuários aos módulos
+model UserPermission {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  moduleId  Int      @map("module_id")
+  hasAccess Boolean  @default(true) @map("has_access") // Se o usuário tem acesso ao módulo
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  user      Usuario  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module    Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, moduleId])
+  @@map("user_permissions")
 }

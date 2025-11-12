@@ -50,4 +50,76 @@ export function requireRoles(roles: Array<string>) {
   }
 }
 
+export function requireModule(moduleCode: string) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json(createErrorResponse('Não autenticado', 401))
+      }
+
+      // Admin tem acesso a tudo
+      if (req.user.role === 'admin') {
+        return next()
+      }
+
+      // Importar prisma aqui para evitar circular dependency
+      const { prisma } = await import('../prisma')
+
+      // Buscar o módulo pelo código
+      const module = await prisma.module.findUnique({
+        where: { code: moduleCode },
+      })
+
+      if (!module) {
+        console.error(`[Auth] Módulo "${moduleCode}" não encontrado`)
+        return res.status(500).json(createErrorResponse('Módulo não configurado', 500))
+      }
+
+      // Verificar permissão baseado no tipo de usuário
+      if (req.user.type === 'profissional') {
+        // Buscar permissão do profissional
+        const permission = await prisma.professionalPermission.findUnique({
+          where: {
+            professionalId_moduleId: {
+              professionalId: req.user.id,
+              moduleId: module.id,
+            },
+          },
+        })
+
+        // Se não há permissão definida, por padrão tem acesso
+        // Se há permissão, verificar se hasAccess é true
+        if (permission && !permission.hasAccess) {
+          return res.status(403).json(createErrorResponse('Acesso negado a este módulo', 403))
+        }
+
+        return next()
+      } else if (req.user.type === 'usuario') {
+        // Buscar permissão do usuário
+        const permission = await prisma.userPermission.findUnique({
+          where: {
+            userId_moduleId: {
+              userId: req.user.id,
+              moduleId: module.id,
+            },
+          },
+        })
+
+        // Usuários só têm acesso se houver permissão explícita
+        if (!permission || !permission.hasAccess) {
+          return res.status(403).json(createErrorResponse('Acesso negado a este módulo', 403))
+        }
+
+        return next()
+      }
+
+      // Tipo de usuário desconhecido
+      return res.status(403).json(createErrorResponse('Tipo de usuário inválido', 403))
+    } catch (error) {
+      console.error('[Auth] Erro ao verificar permissão de módulo:', error)
+      return res.status(500).json(createErrorResponse('Erro ao verificar permissão', 500))
+    }
+  }
+}
+
 

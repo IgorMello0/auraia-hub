@@ -1,11 +1,11 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
-import { auth } from '../middleware/auth'
+import { auth, requireModule } from '../middleware/auth'
 import { createErrorResponse, createSuccessResponse, parsePagination } from '../utils/response'
 
 export const router = Router()
 
-router.get('/', auth(false), async (req, res) => {
+router.get('/', auth(false), requireModule('clientes'), async (req, res) => {
   try {
     const { skip, take, page, pageSize } = parsePagination(req.query)
     const [items, total] = await Promise.all([
@@ -62,7 +62,7 @@ router.get('/:id', auth(false), async (req, res) => {
   }
 })
 
-router.post('/', auth(), async (req, res) => {
+router.post('/', auth(), requireModule('clientes'), async (req, res) => {
   try {
     const { professionalId, name, email, phone, dateOfBirth, document, notes } = req.body
     
@@ -80,7 +80,7 @@ router.post('/', auth(), async (req, res) => {
   }
 })
 
-router.put('/:id', auth(), async (req, res) => {
+router.put('/:id', auth(), requireModule('clientes'), async (req, res) => {
   try {
     const id = Number(req.params.id)
     const { professionalId, name, email, phone, dateOfBirth, document, notes } = req.body
@@ -99,7 +99,7 @@ router.put('/:id', auth(), async (req, res) => {
   }
 })
 
-router.delete('/:id', auth(), async (req, res) => {
+router.delete('/:id', auth(), requireModule('clientes'), async (req, res) => {
   try {
     const id = Number(req.params.id)
     await prisma.client.delete({ where: { id } })

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { FormTemplateBuilder } from '@/components/FormTemplateBuilder';
 import { ProfessionalManagement } from '@/components/ProfessionalManagement';
+import { ModulesAccessTab } from '@/components/ModulesAccessTab';
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,7 +37,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { professionalsApi, categoriesApi, appointmentsApi, clientsApi, usuariosApi } from '@/lib/api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, KeyRound } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Category {
@@ -147,6 +148,8 @@ const Admin = () => {
     role: 'atendente',
     isActive: true
   });
+  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
+  const [selectedUsuarioForPermissions, setSelectedUsuarioForPermissions] = useState<typeof usuarios[0] | null>(null);
 
   useEffect(() => {
     loadProfessionals();
@@ -908,8 +911,21 @@ const Admin = () => {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => {
+                            setSelectedUsuarioForPermissions(usuario);
+                            setIsPermissionsDialogOpen(true);
+                          }}
+                          className="h-8 w-8 p-0"
+                          title="Gerenciar Permissões"
+                        >
+                          <KeyRound className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleOpenUsuarioDialog(usuario)}
                           className="h-8 w-8 p-0"
+                          title="Editar Usuário"
                         >
                           <Edit className="h-3 w-3" />
                         </Button>
@@ -918,6 +934,7 @@ const Admin = () => {
                           size="sm"
                           onClick={() => handleDeleteUsuario(usuario.id)}
                           className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          title="Deletar Usuário"
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -1121,6 +1138,27 @@ const Admin = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialog para gerenciar permissões de usuários */}
+      <Dialog open={isPermissionsDialogOpen} onOpenChange={setIsPermissionsDialogOpen}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5" />
+              Gerenciar Permissões - {selectedUsuarioForPermissions?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Controle quais módulos do sistema este usuário pode acessar.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUsuarioForPermissions && (
+            <ModulesAccessTab 
+              targetId={selectedUsuarioForPermissions.id} 
+              targetType="user" 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

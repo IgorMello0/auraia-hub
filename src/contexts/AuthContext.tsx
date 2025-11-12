@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { professionalsApi } from '@/lib/api';
+import { professionalsApi, permissionsApi } from '@/lib/api';
 
 interface Professional {
   id: string;
@@ -9,19 +9,51 @@ interface Professional {
   specialization: string;
 }
 
+interface Permission {
+  moduleCode: string;
+  moduleName: string;
+  hasAccess: boolean;
+}
+
 interface AuthContextType {
   professional: Professional | null;
+  permissions: Permission[];
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   signup: (data: Omit<Professional, 'id'> & { password: string }) => Promise<{ success: boolean; error?: string }>;
+  hasModuleAccess: (moduleCode: string) => boolean;
   isLoading: boolean;
+  loadPermissions: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [professional, setProfessional] = useState<Professional | null>(null);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Carregar permissões do usuário logado
+  const loadPermissions = async () => {
+    try {
+      const response = await permissionsApi.getMyPermissions();
+      if (response.success && response.data) {
+        setPermissions(response.data);
+        console.log('[Auth] Permissions loaded:', response.data);
+      }
+    } catch (error) {
+      console.error('[Auth] Error loading permissions:', error);
+    }
+  };
+
+  // Verificar se o usuário tem acesso a um módulo
+  const hasModuleAccess = (moduleCode: string): boolean => {
+    // Se não há permissões carregadas, assumir que não tem acesso
+    if (permissions.length === 0) return false;
+    
+    const permission = permissions.find((p) => p.moduleCode === moduleCode);
+    return permission?.hasAccess ?? false;
+  };
 
   useEffect(() => {
     // Verificar sessão armazenada
@@ -31,6 +63,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (savedProfessional && savedToken) {
       try {
         setProfessional(JSON.parse(savedProfessional));
+        // Carregar permissões do usuário logado
+        loadPermissions();
       } catch (error) {
         // Se houver erro ao parsear, limpar dados inválidos
         localStorage.removeItem('professional');
@@ -71,6 +105,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfessional(professionalData);
         localStorage.setItem('professional', JSON.stringify(professionalData));
         localStorage.setItem('token', token);
+        
+        // Carregar permissões do usuário logado
+        await loadPermissions();
+        
         setIsLoading(false);
         console.log('[Auth] Login successful');
         return { success: true };
@@ -129,6 +167,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfessional(professionalData);
         localStorage.setItem('professional', JSON.stringify(professionalData));
         localStorage.setItem('token', token);
+        
+        // Carregar permissões do usuário logado
+        await loadPermissions();
+        
         setIsLoading(false);
         console.log('[Auth] Signup successful');
         return { success: true };
@@ -152,6 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setProfessional(null);
+    setPermissions([]);
     localStorage.removeItem('professional');
     localStorage.removeItem('token');
   };
@@ -159,10 +202,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       professional,
+      permissions,
       login,
       logout,
       signup,
-      isLoading
+      hasModuleAccess,
+      isLoading,
+      loadPermissions
     }}>
       {children}
     </AuthContext.Provider>

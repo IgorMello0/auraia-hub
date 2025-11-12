@@ -259,7 +259,7 @@ export const ProfessionalManagement = () => {
             </TabsList>
 
             <TabsContent value="modules" className="mt-6">
-              <ModulesAccessTab professionalId={selectedProfessional.id} />
+              <ModulesAccessTab targetId={selectedProfessional.id} targetType="professional" />
             </TabsContent>
 
             <TabsContent value="forms" className="mt-6">

@@ -16,6 +16,8 @@ import { router as agentesIaRouter } from './routes/agentes-ia'
 import { router as conversasRouter } from './routes/conversas'
 import { router as mensagensRouter } from './routes/mensagens'
 import { router as uploadRouter } from './routes/upload'
+import { router as modulesRouter } from './routes/modules'
+import { router as permissionsRouter } from './routes/permissions'
 import { createErrorResponse } from './utils/response'
 import path from 'path'
 
@@ -44,6 +46,8 @@ app.use('/api/agentes-ia', agentesIaRouter)
 app.use('/api/conversas', conversasRouter)
 app.use('/api/mensagens', mensagensRouter)
 app.use('/api/upload', uploadRouter)
+app.use('/api/modules', modulesRouter)
+app.use('/api/permissions', permissionsRouter)
 
 // Servir arquivos estáticos da pasta uploads
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))
