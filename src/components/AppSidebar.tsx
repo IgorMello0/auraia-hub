@@ -71,6 +71,7 @@ export function AppSidebar() {
   const { professional, logout, hasModuleAccess, permissions } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const userType = localStorage.getItem('userType') || 'professional';
 
   // Filtrar itens do menu baseado nas permissões
   const filteredMenuItems = menuItems.filter((item) => {
@@ -93,6 +94,13 @@ export function AppSidebar() {
       .toUpperCase()
       .slice(0, 2);
   };
+  
+  const getUserTypeLabel = () => {
+    if (userType === 'user') {
+      return professional?.specialization || 'Usuário';
+    }
+    return professional?.specialization || 'Profissional';
+  };
 
   return (
     <Sidebar>
@@ -105,7 +113,7 @@ export function AppSidebar() {
           </Avatar>
           <div className="flex flex-col">
             <span className="font-semibold text-sm">{professional?.name}</span>
-            <span className="text-xs text-muted-foreground">{professional?.specialization}</span>
+            <span className="text-xs text-muted-foreground">{getUserTypeLabel()}</span>
           </div>
         </div>
       </SidebarHeader>
@@ -146,14 +154,17 @@ export function AppSidebar() {
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <a href="/admin">
-                <Shield className="h-4 w-4" />
-                <span>Administração</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {/* Administração - Apenas para Profissionais */}
+          {userType === 'professional' && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <a href="/admin">
+                  <Shield className="h-4 w-4" />
+                  <span>Administração</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <a href="/settings">

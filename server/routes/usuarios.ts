@@ -9,12 +9,28 @@ export const router = Router()
 
 router.post('/login', async (req, res) => {
   const { email, password } = req.body as { email: string; password: string }
-  const user = await prisma.usuario.findUnique({ where: { email } })
+  const user = await prisma.usuario.findUnique({ 
+    where: { email },
+    include: { company: true }
+  })
   if (!user) return res.status(401).json(createErrorResponse('Credenciais inválidas', 401))
   const ok = await bcrypt.compare(password, user.passwordHash)
   if (!ok) return res.status(401).json(createErrorResponse('Credenciais inválidas', 401))
   const token = jwt.sign({ id: user.id, role: user.role, companyId: user.companyId, type: 'usuario' }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '12h' })
-  res.json(createSuccessResponse({ token }))
+  
+  // Retornar dados do usuário no mesmo formato que profissional
+  res.json(createSuccessResponse({ 
+    token,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: '',
+      companyId: user.companyId,
+      companyName: user.company?.name
+    }
+  }))
 })
 
 router.get('/', auth(), async (req, res) => {

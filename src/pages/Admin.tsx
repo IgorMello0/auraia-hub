@@ -39,6 +39,7 @@ import { useToast } from '@/hooks/use-toast';
 import { professionalsApi, categoriesApi, appointmentsApi, clientsApi, usuariosApi } from '@/lib/api';
 import { Loader2, KeyRound } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface Category {
   id: string;
@@ -53,6 +54,20 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const navigate = useNavigate();
+  
+  // Verificar se é profissional - usuários não têm acesso
+  useEffect(() => {
+    const userType = localStorage.getItem('userType');
+    if (userType === 'user') {
+      toast({
+        title: 'Acesso Negado',
+        description: 'Apenas profissionais têm acesso à página de Administração.',
+        variant: 'destructive',
+      });
+      navigate('/dashboard');
+    }
+  }, [navigate]);
 
   useEffect(() => {
     loadCategories();

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { professionalsApi, permissionsApi } from '@/lib/api';
+import { professionalsApi, permissionsApi, usuariosApi } from '@/lib/api';
 
 interface Professional {
   id: string;
@@ -79,13 +79,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     try {
       console.log('[Auth] Attempting login for:', email);
-      const response = await professionalsApi.login(email, password);
-      console.log('[Auth] Login response:', response);
+      
+      // Tentar login como profissional primeiro
+      let response = await professionalsApi.login(email, password);
+      console.log('[Auth] Professional login response:', response);
+      
+      // Se falhar, tentar login como usuário
+      if (!response.success) {
+        console.log('[Auth] Professional login failed, trying user login...');
+        response = await usuariosApi.login(email, password);
+        console.log('[Auth] User login response:', response);
+      }
       
       if (response.success && response.data) {
-        const { token, professional: profData } = response.data;
+        const { token, professional: profData, user: userData } = response.data as any;
         
-        if (!profData || !token) {
+        if ((!profData && !userData) || !token) {
           console.error('[Auth] Missing data in response:', response);
           setIsLoading(false);
           return { 
@@ -94,23 +103,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
         }
         
+        // Criar dados do usuário logado (pode ser profissional ou usuário)
+        const data = profData || userData;
         const professionalData: Professional = {
-          id: profData.id.toString(),
-          name: profData.name,
-          email: profData.email,
-          phone: profData.phone || '',
-          specialization: profData.specialization || ''
+          id: data.id.toString(),
+          name: data.name,
+          email: data.email,
+          phone: data.phone || '',
+          specialization: data.specialization || data.role || 'Usuário'
         };
         
         setProfessional(professionalData);
         localStorage.setItem('professional', JSON.stringify(professionalData));
         localStorage.setItem('token', token);
+        localStorage.setItem('userType', profData ? 'professional' : 'user');
         
         // Carregar permissões do usuário logado
         await loadPermissions();
         
         setIsLoading(false);
-        console.log('[Auth] Login successful');
+        console.log('[Auth] Login successful as', profData ? 'professional' : 'user');
         return { success: true };
       }
       
@@ -118,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
       return { 
         success: false, 
-        error: response.error?.message || 'Erro ao fazer login. Verifique suas credenciais.' 
+        error: response.error?.message || 'Email ou senha incorretos.' 
       };
     } catch (error) {
       console.error('[Auth] Login exception:', error);
@@ -197,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPermissions([]);
     localStorage.removeItem('professional');
     localStorage.removeItem('token');
+    localStorage.removeItem('userType');
   };
 
   return (
